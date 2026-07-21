@@ -287,6 +287,43 @@ export function useHandaStore() {
     return ci
   }, [])
 
+  const exportCsv = useCallback((campaignId: string): string => {
+    const campaign = data.campaigns.find(c => c.id === campaignId)
+    if (!campaign) return ''
+
+    const byHousehold = new Map<string, CheckIn>()
+    for (const ci of data.checkIns) {
+      if (ci.campaign_id !== campaignId) continue
+      const existing = byHousehold.get(ci.household_id)
+      if (!existing || ci.created_at > existing.created_at) {
+        byHousehold.set(ci.household_id, ci)
+      }
+    }
+
+    function esc(s: string): string {
+      return s.includes('"') || s.includes(',') || s.includes('\n')
+        ? `"${s.replace(/"/g, '""')}"`
+        : s
+    }
+
+    const rows = data.households
+      .filter(h => h.barangay_code === campaign.barangay_code)
+      .map(hh => {
+        const ci = byHousehold.get(hh.id)
+        if (!ci) return null
+        const answers = data.answers.filter(a => a.check_in_id === ci.id)
+        const needs = answers
+          .filter(a => a.answer === 'yes')
+          .map(a => data.questions.find(q => q.id === a.question_id)?.need_category ?? '')
+          .filter(Boolean)
+          .join('; ')
+        return [esc(hh.household_head_name), esc(hh.address), esc(needs), ci.status, esc(ci.submitted_by), ci.created_at].join(',')
+      })
+      .filter(Boolean)
+
+    return `Household,Address,Needs,Status,Submitted By,Created At\n${rows.join('\n')}`
+  }, [data])
+
   return {
     official,
     loginOfficial,
@@ -299,5 +336,6 @@ export function useHandaStore() {
     updateCaseStatus,
     submitCheckIn,
     getDashboard,
+    exportCsv,
   }
 }

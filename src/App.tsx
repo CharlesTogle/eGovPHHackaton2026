@@ -17,6 +17,7 @@ type StoreProps = {
   updateCaseStatus: (checkInId: string, status: CheckInStatus) => void
   submitCheckIn: (input: { campaign_id: string; household_id: string; submitted_by: string; answers: { question_id: string; answer: string }[] }) => import('./shared').CheckIn
   getDashboard: (campaignId: string) => import('./shared').Dashboard
+  exportCsv: (campaignId: string) => string
 }
 
 function ResidentFlow({ data, submitCheckIn }: Pick<StoreProps, 'data' | 'submitCheckIn'>) {
@@ -215,7 +216,7 @@ function ResidentFlow({ data, submitCheckIn }: Pick<StoreProps, 'data' | 'submit
   )
 }
 
-function OfficialConsole({ official, loginOfficial, logoutOfficial, data, createCampaign, addQuestion, removeQuestion, updateCampaignStatus, updateCaseStatus, submitCheckIn, getDashboard }: StoreProps) {
+function OfficialConsole({ official, loginOfficial, logoutOfficial, data, createCampaign, addQuestion, removeQuestion, updateCampaignStatus, updateCaseStatus, submitCheckIn, getDashboard, exportCsv }: StoreProps) {
   const [name, setName] = useState('')
   const [disasterType, setDisasterType] = useState('Typhoon')
   const [disasterDate, setDisasterDate] = useState('')
@@ -266,6 +267,18 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, data, create
     setManualAnswers({})
   }
 
+  function handleExportCsv() {
+    if (!activeCampaign) return
+    const csv = exportCsv(activeCampaign.id)
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${activeCampaign.name.replace(/\s+/g, '_')}_export.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (!official) {
     return (
       <div className="mx-auto max-w-[960px] p-6">
@@ -304,6 +317,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, data, create
             <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Active Campaign</h2>
             <div className="flex gap-2">
               <Button size="sm" onClick={() => setManualEntryOpen(true)}>Manual Entry</Button>
+              <Button variant="outline" size="sm" onClick={handleExportCsv}>Export CSV</Button>
               <Button variant="ghost" size="sm" onClick={() => updateCampaignStatus(activeCampaign.id, 'closed')}>Close</Button>
               <Button variant="ghost" size="sm" onClick={() => updateCampaignStatus(activeCampaign.id, 'archived')}>Archive</Button>
             </div>
