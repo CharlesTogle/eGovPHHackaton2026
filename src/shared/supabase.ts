@@ -71,16 +71,6 @@ export async function insertQuestions(qs: CampaignQuestion[]) {
   if (error) console.error('insertQuestions:', error)
 }
 
-export async function replaceQuestions(campaignId: string, qs: CampaignQuestion[]) {
-  if (!db()) return
-  const { error: delErr } = await table('campaign_questions').delete().eq('campaign_id', campaignId)
-  if (delErr) console.error('replaceQuestions delete:', delErr)
-  if (qs.length > 0) {
-    const { error } = await table('campaign_questions').insert(qs)
-    if (error) console.error('replaceQuestions insert:', error)
-  }
-}
-
 export async function updateCampaignStatusDb(id: string, status: CampaignStatus) {
   if (!db()) return
   const { error } = await table('campaigns').update({ status, updated_at: new Date().toISOString() }).eq('id', id)
