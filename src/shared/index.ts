@@ -57,6 +57,15 @@ export type CheckInAnswer = {
   answer: string
 }
 
+// --- Official session (mock eGovPH SSO) ---
+
+export type Official = {
+  uniqid: string
+  name: string
+  barangay_code: string
+  role: string
+}
+
 // --- Data store shape ---
 
 export type HandaData = {
@@ -135,18 +144,35 @@ function uid(): string {
 
 export function useHandaStore() {
   const [data, setData] = useState<HandaData>(seedData)
+  const [official, setOfficial] = useState<Official | null>(null)
 
-  const createCampaign = useCallback((input: { name: string; disaster_type: string; disaster_date: string; barangay_code: string; created_by: string }) => {
+  const loginOfficial = useCallback(() => {
+    setOfficial({
+      uniqid: 'OFF-001',
+      name: 'Barangay Capt. Reyes',
+      barangay_code: 'BRG-001',
+      role: 'official',
+    })
+  }, [])
+
+  const logoutOfficial = useCallback(() => {
+    setOfficial(null)
+  }, [])
+
+  const createCampaign = useCallback((input: { name: string; disaster_type: string; disaster_date: string }) => {
+    if (!official) return null
     const c: Campaign = {
       id: uid(),
       ...input,
       status: 'draft',
+      created_by: official.name,
+      barangay_code: official.barangay_code,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
     setData(d => ({ ...d, campaigns: [...d.campaigns, c] }))
     return c
-  }, [])
+  }, [official])
 
   const addQuestion = useCallback((campaignId: string, question_text: string, need_category: string) => {
     setData(d => {
@@ -154,6 +180,10 @@ export function useHandaStore() {
       const q: CampaignQuestion = { id: uid(), campaign_id: campaignId, question_text, need_category, display_order: order }
       return { ...d, questions: [...d.questions, q] }
     })
+  }, [])
+
+  const removeQuestion = useCallback((questionId: string) => {
+    setData(d => ({ ...d, questions: d.questions.filter(q => q.id !== questionId) }))
   }, [])
 
   const updateCampaignStatus = useCallback((campaignId: string, status: CampaignStatus) => {
@@ -174,9 +204,13 @@ export function useHandaStore() {
   }, [])
 
   return {
+    official,
+    loginOfficial,
+    logoutOfficial,
     data,
     createCampaign,
     addQuestion,
+    removeQuestion,
     updateCampaignStatus,
     getDashboard,
     exportCsv,
