@@ -37,8 +37,35 @@ export function useDashboardData(campaignId: string | null, barangayCode: string
   }, [campaignId, barangayCode])
 
   useEffect(() => {
-    refresh()
-  }, [refresh])
+    let cancelled = false
+    async function load() {
+      if (!campaignId) {
+        if (!cancelled) {
+          setData(null)
+          setLoading(false)
+        }
+        return
+      }
+      const [checkInsRes, answersRes, questionsRes, householdsRes] = await Promise.all([
+        supabase.from("check_ins").select("*").eq("campaign_id", campaignId),
+        supabase.from("check_in_answers").select("*"),
+        supabase.from("campaign_questions").select("*").eq("campaign_id", campaignId),
+        supabase.from("households").select("*").eq("barangay_code", barangayCode),
+      ])
+
+      const checkIns = (checkInsRes.data ?? []) as CheckIn[]
+      const answers = (answersRes.data ?? []) as CheckInAnswer[]
+      const questions = (questionsRes.data ?? []) as CampaignQuestion[]
+      const households = (householdsRes.data ?? []) as Household[]
+
+      if (!cancelled) {
+        setData(aggregate(checkIns, answers, questions, households))
+        setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [campaignId, barangayCode])
 
   return { data, loading, refresh }
 }

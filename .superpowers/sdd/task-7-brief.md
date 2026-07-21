@@ -1,3 +1,137 @@
+### Task 7: Dashboard feature (live, useDashboardData, status, DashboardPage)
+
+**Files:**
+- Create: `src/features/dashboard/live.ts`
+- Create: `src/features/dashboard/useDashboardData.ts`
+- Create: `src/features/dashboard/status.ts`
+- Modify: `src/features/dashboard/DashboardPage.tsx` (replace stub)
+
+**Interfaces:**
+- Consumes: `supabase`, types, `aggregate`, `filterAffected`, `toCsv`, `downloadCsv`
+- Produces: `useCampaignLive(campaignId, onRefresh)` — subscribes to realtime
+- Produces: `setStatus(checkInId, status)` — updates status
+- Produces: `DashboardPage` — full dashboard with builder, metrics, lists, status, export, close
+
+- [ ] **Step 1: Create status tracker**
+
+Create `src/features/dashboard/status.ts`:
+```ts
+import { supabase } from "@/lib/supabase"
+import type { CheckInStatus } from "@/lib/types"
+
+const TRANSITIONS: Record<CheckInStatus, CheckInStatus | null> = {
+  unresolved: "visited",
+  visited: "resolved",
+  resolved: null,
+}
+
+export async function advanceStatus(checkInId: string, currentStatus: CheckInStatus): Promise<CheckInStatus> {
+  const next = TRANSITIONS[currentStatus]
+  if (!next) return currentStatus
+  const { error } = await supabase.from("check_ins").update({ status: next }).eq("id", checkInId)
+  if (error) throw error
+  return next
+}
+```
+
+- [ ] **Step 2: Create useDashboardData hook**
+
+Create `src/features/dashboard/useDashboardData.ts`:
+```ts
+import { useCallback, useEffect, useState } from "react"
+import { supabase } from "@/lib/supabase"
+import type { Campaign, CampaignQuestion, CheckIn, CheckInAnswer, Household } from "@/lib/types"
+import { aggregate, type DashboardData } from "@/lib/aggregator"
+
+interface DashboardState {
+  data: DashboardData | null
+  loading: boolean
+  refresh: () => Promise<void>
+}
+
+export function useDashboardData(campaignId: string | null, barangayCode: string): DashboardState {
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const refresh = useCallback(async () => {
+    if (!campaignId) {
+      setData(null)
+      setLoading(false)
+      return
+    }
+
+    const [checkInsRes, answersRes, questionsRes, householdsRes] = await Promise.all([
+      supabase.from("check_ins").select("*").eq("campaign_id", campaignId),
+      supabase.from("check_in_answers").select("*"),
+      supabase.from("campaign_questions").select("*").eq("campaign_id", campaignId),
+      supabase.from("households").select("*").eq("barangay_code", barangayCode),
+    ])
+
+    const checkIns = (checkInsRes.data ?? []) as CheckIn[]
+    const answers = (answersRes.data ?? []) as CheckInAnswer[]
+    const questions = (questionsRes.data ?? []) as CampaignQuestion[]
+    const households = (householdsRes.data ?? []) as Household[]
+
+    setData(aggregate(checkIns, answers, questions, households))
+    setLoading(false)
+  }, [campaignId, barangayCode])
+
+  useEffect(() => {
+    refresh()
+  }, [refresh])
+
+  return { data, loading, refresh }
+}
+
+export async function listActiveCampaigns(barangayCode: string): Promise<Campaign[]> {
+  const { data } = await supabase
+    .from("campaigns")
+    .select("*")
+    .eq("barangay_code", barangayCode)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+  return (data ?? []) as Campaign[]
+}
+
+export async function getQuestionsForCampaign(campaignId: string): Promise<CampaignQuestion[]> {
+  const { data } = await supabase
+    .from("campaign_questions")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("display_order")
+  return (data ?? []) as CampaignQuestion[]
+}
+```
+
+- [ ] **Step 3: Create live realtime hook**
+
+Create `src/features/dashboard/live.ts`:
+```ts
+import { useEffect } from "react"
+import { supabase } from "@/lib/supabase"
+
+export function useCampaignLive(campaignId: string | null, onRefresh: () => void) {
+  useEffect(() => {
+    if (!campaignId) return
+
+    const channel = supabase
+      .channel(`campaign-${campaignId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "check_ins", filter: `campaign_id=eq.${campaignId}` }, onRefresh)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "check_ins", filter: `campaign_id=eq.${campaignId}` }, onRefresh)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "check_in_answers" }, onRefresh)
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [campaignId, onRefresh])
+}
+```
+
+- [ ] **Step 4: Replace DashboardPage stub with full dashboard**
+
+Replace `src/features/dashboard/DashboardPage.tsx` entirely:
+```tsx
 import { useState } from "react"
 import { useSession } from "@/features/auth"
 import { useCampaigns } from "@/features/campaigns/useCampaigns"
@@ -12,7 +146,9 @@ import { filterAffected } from "@/lib/aggregator"
 
 export function DashboardPage() {
   const { session, logout } = useSession()
-  const { campaigns, refetch: refetchCampaigns } = useCampaigns(session?.profile.barangay_code ?? "")
+  if (!session) return null
+
+  const { campaigns, refetch: refetchCampaigns } = useCampaigns(session.profile.barangay_code)
   const [showBuilder, setShowBuilder] = useState(false)
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(
     campaigns.find((c) => c.status === "active")?.id ?? null
@@ -20,10 +156,8 @@ export function DashboardPage() {
   const [filterNeed, setFilterNeed] = useState<NeedCategory | "">("")
   const [filterStatus, setFilterStatus] = useState<CheckInStatus | "">("")
 
-  const { data, loading, refresh } = useDashboardData(selectedCampaignId, session?.profile.barangay_code ?? "")
+  const { data, loading, refresh } = useDashboardData(selectedCampaignId, session.profile.barangay_code)
   useCampaignLive(selectedCampaignId, refresh)
-
-  if (!session) return null
 
   const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId) ?? null
 
@@ -264,3 +398,11 @@ export function DashboardPage() {
     </div>
   )
 }
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/features/dashboard/
+git commit -m "feat: implement live barangay dashboard with realtime, status tracking, and CSV export"
+```

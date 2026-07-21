@@ -17,8 +17,19 @@ export function useCampaigns(barangayCode: string) {
   }, [barangayCode])
 
   useEffect(() => {
-    refetch()
-  }, [refetch])
+    let cancelled = false
+    async function load() {
+      setLoading(true)
+      try {
+        const data = await listCampaigns(barangayCode)
+        if (!cancelled) setCampaigns(data)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [barangayCode])
 
   return { campaigns, loading, refetch }
 }

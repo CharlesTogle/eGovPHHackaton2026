@@ -1,3 +1,182 @@
+### Task 6: Check-in feature (service, matcher-query, useActiveCampaign, CheckInPage)
+
+**Files:**
+- Create: `src/features/checkin/service.ts`
+- Create: `src/features/checkin/matcher-query.ts`
+- Create: `src/features/checkin/useActiveCampaign.ts`
+- Modify: `src/features/checkin/CheckInPage.tsx` (replace stub)
+
+**Interfaces:**
+- Consumes: `supabase`, types, `matchHousehold`
+- Produces: `upsertCheckIn({ campaignId, householdId, submittedBy, answers })`
+- Produces: `CheckInPage` — full flow: prompt → match → questions → confirm
+
+- [ ] **Step 1: Create check-in service**
+
+Create `src/features/checkin/service.ts`:
+```ts
+import { supabase } from "@/lib/supabase"
+import type { CheckIn, CheckInAnswer } from "@/lib/types"
+
+export interface UpsertCheckInInput {
+  campaignId: string
+  householdId: string
+  submittedBy: string
+  answers: { questionId: string; answer: string }[]
+}
+
+export async function upsertCheckIn(input: UpsertCheckInInput): Promise<CheckIn> {
+  const { data: existing, error: findError } = await supabase
+    .from("check_ins")
+    .select("*")
+    .eq("campaign_id", input.campaignId)
+    .eq("household_id", input.householdId)
+    .maybeSingle()
+
+  if (findError) throw findError
+
+  let checkIn: CheckIn
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from("check_ins")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", existing.id)
+      .select()
+      .single()
+    if (error) throw error
+    checkIn = data as CheckIn
+  } else {
+    const { data, error } = await supabase
+      .from("check_ins")
+      .insert({
+        campaign_id: input.campaignId,
+        household_id: input.householdId,
+        submitted_by: input.submittedBy,
+      })
+      .select()
+      .single()
+    if (error) throw error
+    checkIn = data as CheckIn
+  }
+
+  for (const a of input.answers) {
+    const { data: existingAnswer } = await supabase
+      .from("check_in_answers")
+      .select("*")
+      .eq("check_in_id", checkIn.id)
+      .eq("question_id", a.questionId)
+      .maybeSingle()
+
+    if (existingAnswer) {
+      const merged = mergeAnswer(existingAnswer.answer, a.answer)
+      await supabase
+        .from("check_in_answers")
+        .update({ answer: merged })
+        .eq("id", existingAnswer.id)
+    } else {
+      await supabase
+        .from("check_in_answers")
+        .insert({ check_in_id: checkIn.id, question_id: a.questionId, answer: a.answer })
+    }
+  }
+
+  return checkIn
+}
+
+function mergeAnswer(existing: string, incoming: string): string {
+  if (existing.toLowerCase() === "yes" || incoming.toLowerCase() === "yes") return "yes"
+  return incoming
+}
+```
+
+- [ ] **Step 2: Create matcher-query**
+
+Create `src/features/checkin/matcher-query.ts`:
+```ts
+import { supabase } from "@/lib/supabase"
+import type { Household, HouseholdMember } from "@/lib/types"
+import { matchHousehold, type MatchResult } from "@/lib/matcher"
+
+export async function fetchHouseholdsAndMembers(
+  barangayCode: string
+): Promise<{ households: Household[]; members: HouseholdMember[] }> {
+  const [{ data: hhData, error: hhError }, { data: memData, error: memError }] = await Promise.all([
+    supabase.from("households").select("*").eq("barangay_code", barangayCode),
+    supabase.from("household_members").select("*"),
+  ])
+  if (hhError) throw hhError
+  if (memError) throw memError
+  return { households: (hhData ?? []) as Household[], members: (memData ?? []) as HouseholdMember[] }
+}
+
+export async function matchResidentToHousehold(
+  firstName: string,
+  lastName: string,
+  barangayCode: string
+): Promise<MatchResult> {
+  const { households, members } = await fetchHouseholdsAndMembers(barangayCode)
+  return matchHousehold({ first_name: firstName, last_name: lastName, barangay_code: barangayCode }, members, households)
+}
+```
+
+- [ ] **Step 3: Create useActiveCampaign hook**
+
+Create `src/features/checkin/useActiveCampaign.ts`:
+```ts
+import { useEffect, useState } from "react"
+import { supabase } from "@/lib/supabase"
+import type { Campaign, CampaignQuestion } from "@/lib/types"
+
+interface ActiveCampaignData {
+  campaign: Campaign | null
+  questions: CampaignQuestion[]
+  loading: boolean
+}
+
+export function useActiveCampaign(barangayCode: string): ActiveCampaignData {
+  const [campaign, setCampaign] = useState<Campaign | null>(null)
+  const [questions, setQuestions] = useState<CampaignQuestion[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      const { data: campaigns } = await supabase
+        .from("campaigns")
+        .select("*")
+        .eq("barangay_code", barangayCode)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+
+      const active = campaigns?.[0] ?? null
+      setCampaign(active as Campaign | null)
+
+      if (active) {
+        const { data: qs } = await supabase
+          .from("campaign_questions")
+          .select("*")
+          .eq("campaign_id", active.id)
+          .order("display_order")
+        setQuestions((qs ?? []) as CampaignQuestion[])
+      } else {
+        setQuestions([])
+      }
+
+      setLoading(false)
+    }
+    load()
+  }, [barangayCode])
+
+  return { campaign, questions, loading }
+}
+```
+
+- [ ] **Step 4: Replace CheckInPage stub with full flow**
+
+Replace `src/features/checkin/CheckInPage.tsx` entirely:
+```tsx
 import { useState } from "react"
 import { useSession } from "@/features/auth"
 import { useActiveCampaign } from "./useActiveCampaign"
@@ -10,14 +189,13 @@ type FlowStep = "prompt" | "matching" | "select" | "questions" | "submitting" | 
 
 export function CheckInPage() {
   const { session, logout } = useSession()
-  const { campaign, questions, loading } = useActiveCampaign(session?.profile.barangay_code ?? "")
+  if (!session) return null
+
+  const { campaign, questions, loading } = useActiveCampaign(session.profile.barangay_code)
   const [step, setStep] = useState<FlowStep>("prompt")
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null)
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
-
-  if (!session) return null
-  const s = session
 
   const cardStyle = {
     background: "var(--card)",
@@ -30,9 +208,9 @@ export function CheckInPage() {
     setStep("matching")
     try {
       const result = await matchResidentToHousehold(
-        s.profile.first_name,
-        s.profile.last_name,
-        s.profile.barangay_code
+        session.profile.first_name,
+        session.profile.last_name,
+        session.profile.barangay_code
       )
       setMatchResult(result)
       if (result.kind === "match") {
@@ -53,7 +231,7 @@ export function CheckInPage() {
       await upsertCheckIn({
         campaignId: campaign.id,
         householdId: selectedHouseholdId,
-        submittedBy: s.profile.uniqid,
+        submittedBy: session.profile.uniqid,
         answers: questions.map((q) => ({ questionId: q.id, answer: answers[q.id] ?? "no" })),
       })
       setStep("confirmed")
@@ -238,3 +416,11 @@ export function CheckInPage() {
     </div>
   )
 }
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/features/checkin/
+git commit -m "feat: implement full resident check-in flow"
+```

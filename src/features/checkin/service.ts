@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import type { CheckIn, CheckInAnswer } from "@/lib/types"
+import type { CheckIn } from "@/lib/types"
 
 export interface UpsertCheckInInput {
   campaignId: string

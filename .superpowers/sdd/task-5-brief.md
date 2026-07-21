@@ -1,3 +1,145 @@
+### Task 5: Campaigns feature (types, service, builder, hooks)
+
+**Files:**
+- Create: `src/features/campaigns/types.ts`
+- Create: `src/features/campaigns/service.ts`
+- Create: `src/features/campaigns/useCampaigns.ts`
+- Create: `src/features/campaigns/CampaignBuilder.tsx`
+
+**Interfaces:**
+- Consumes: `Campaign`, `CampaignQuestion`, `NeedCategory` from `src/lib/types.ts`
+- Consumes: `supabase` from `src/lib/supabase.ts`
+- Produces: `useCampaigns(barangayCode) → { campaigns, loading, refetch }`
+- Produces: `CampaignBuilder` component (3-step inline form)
+
+- [ ] **Step 1: Create campaigns feature types**
+
+Create `src/features/campaigns/types.ts`:
+```ts
+import type { Campaign, CampaignQuestion, NeedCategory } from "@/lib/types"
+
+export interface CampaignDraft {
+  name: string
+  disaster_type: string
+  disaster_date: string
+}
+
+export interface QuestionDraft {
+  question_text: string
+  need_category: NeedCategory
+}
+
+export type { Campaign, CampaignQuestion }
+```
+
+- [ ] **Step 2: Create campaigns service**
+
+Create `src/features/campaigns/service.ts`:
+```ts
+import { supabase } from "@/lib/supabase"
+import type { Campaign, CampaignQuestion } from "@/lib/types"
+import type { CampaignDraft, QuestionDraft } from "./types"
+
+export async function listCampaigns(barangayCode: string): Promise<Campaign[]> {
+  const { data, error } = await supabase
+    .from("campaigns")
+    .select("*")
+    .eq("barangay_code", barangayCode)
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  return data as Campaign[]
+}
+
+export async function getCampaign(id: string): Promise<Campaign | null> {
+  const { data, error } = await supabase.from("campaigns").select("*").eq("id", id).maybeSingle()
+  if (error) throw error
+  return data as Campaign | null
+}
+
+export async function getQuestions(campaignId: string): Promise<CampaignQuestion[]> {
+  const { data, error } = await supabase
+    .from("campaign_questions")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("display_order")
+  if (error) throw error
+  return data as CampaignQuestion[]
+}
+
+export async function createCampaign(
+  draft: CampaignDraft,
+  createdBy: string,
+  barangayCode: string
+): Promise<Campaign> {
+  const { data, error } = await supabase
+    .from("campaigns")
+    .insert({ ...draft, created_by: createdBy, barangay_code: barangayCode })
+    .select()
+    .single()
+  if (error) throw error
+  return data as Campaign
+}
+
+export async function addQuestions(
+  campaignId: string,
+  questions: QuestionDraft[]
+): Promise<CampaignQuestion[]> {
+  const rows = questions.map((q, i) => ({
+    campaign_id: campaignId,
+    question_text: q.question_text,
+    need_category: q.need_category,
+    display_order: i,
+  }))
+  const { data, error } = await supabase.from("campaign_questions").insert(rows).select()
+  if (error) throw error
+  return data as CampaignQuestion[]
+}
+
+export async function publishCampaign(id: string): Promise<void> {
+  const { error } = await supabase.from("campaigns").update({ status: "active" }).eq("id", id)
+  if (error) throw error
+}
+
+export async function closeCampaign(id: string): Promise<void> {
+  const { error } = await supabase.from("campaigns").update({ status: "closed" }).eq("id", id)
+  if (error) throw error
+}
+```
+
+- [ ] **Step 3: Create useCampaigns hook**
+
+Create `src/features/campaigns/useCampaigns.ts`:
+```ts
+import { useCallback, useEffect, useState } from "react"
+import type { Campaign } from "@/lib/types"
+import { listCampaigns } from "./service"
+
+export function useCampaigns(barangayCode: string) {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const refetch = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await listCampaigns(barangayCode)
+      setCampaigns(data)
+    } finally {
+      setLoading(false)
+    }
+  }, [barangayCode])
+
+  useEffect(() => {
+    refetch()
+  }, [refetch])
+
+  return { campaigns, loading, refetch }
+}
+```
+
+- [ ] **Step 4: Create CampaignBuilder component**
+
+Create `src/features/campaigns/CampaignBuilder.tsx`:
+```tsx
 import { useState } from "react"
 import { useSession } from "@/features/auth"
 import type { NeedCategory } from "@/lib/types"
@@ -16,6 +158,8 @@ interface Props {
 
 export function CampaignBuilder({ onDone }: Props) {
   const { session } = useSession()
+  if (!session) return null
+
   const [step, setStep] = useState(1)
   const [name, setName] = useState("")
   const [disasterType, setDisasterType] = useState("")
@@ -24,8 +168,6 @@ export function CampaignBuilder({ onDone }: Props) {
     { question_text: "", need_category: "shelter" },
   ])
   const [submitting, setSubmitting] = useState(false)
-
-  if (!session) return null
 
   function addQuestion() {
     setQuestions([...questions, { question_text: "", need_category: "shelter" }])
@@ -220,3 +362,11 @@ export function CampaignBuilder({ onDone }: Props) {
     </div>
   )
 }
+```
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/features/campaigns/
+git commit -m "feat: add campaigns feature (service, builder, hooks)"
+```
