@@ -18,6 +18,7 @@ export const supabase: ReturnType<typeof createClient> | null =
 const db = () => supabase
 
 function table(name: string) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return db()!.from(name) as any
 }
 
