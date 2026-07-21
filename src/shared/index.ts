@@ -267,6 +267,26 @@ export function useHandaStore() {
     }))
   }, [])
 
+  const submitCheckIn = useCallback((input: { campaign_id: string; household_id: string; submitted_by: string; answers: { question_id: string; answer: string }[] }) => {
+    const ci: CheckIn = {
+      id: uid(),
+      campaign_id: input.campaign_id,
+      household_id: input.household_id,
+      submitted_by: input.submitted_by,
+      status: 'unresolved',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    const ans: CheckInAnswer[] = input.answers.map(a => ({
+      id: uid(),
+      check_in_id: ci.id,
+      question_id: a.question_id,
+      answer: a.answer,
+    }))
+    setData(d => ({ ...d, checkIns: [...d.checkIns, ci], answers: [...d.answers, ...ans] }))
+    return ci
+  }, [])
+
   return {
     official,
     loginOfficial,
@@ -277,6 +297,7 @@ export function useHandaStore() {
     removeQuestion,
     updateCampaignStatus,
     updateCaseStatus,
+    submitCheckIn,
     getDashboard,
   }
 }
