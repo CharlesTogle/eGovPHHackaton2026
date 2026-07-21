@@ -6,6 +6,10 @@ import { SessionProvider, useSession } from '@/features/auth/session-context'
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
 import { ResidentConsole } from '@/features/resident/ResidentConsole'
 
+function formatSubmittedBy(submittedBy: string) {
+  return submittedBy.includes('(manual)') ? submittedBy : 'Self Report'
+}
+
 function OfficialConsole() {
   const { session, logout } = useSession()
   const store = useHandaStore()
@@ -334,7 +338,7 @@ function OfficialConsole() {
                                   onClick={() => selectedCampaign?.status === 'active' && openModal(r)}
                                 >
                                   <td className="py-3 px-4 font-medium">{r.checkIn.name}</td>
-                                  <td className="py-3 px-4" style={{ color: 'var(--muted-text)' }}>{r.checkIn.submitted_by}</td>
+                                  <td className="py-3 px-4" style={{ color: 'var(--muted-text)' }}>{formatSubmittedBy(r.checkIn.submitted_by)}</td>
                                   <td className="py-3 px-4">
                                     <span className={`status-chip ${r.checkIn.status === 'resolved' ? 'good' : r.checkIn.status === 'visited' ? 'warn' : 'open'}`}>
                                       {r.checkIn.status}
@@ -535,7 +539,7 @@ function OfficialConsole() {
             </div>
             <div className="mb-4">
               <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--ink)' }}>{selectedRow.checkIn.name}</p>
-              <p style={{ fontSize: '13px', color: 'var(--muted-text)' }}>Submitted by: {selectedRow.checkIn.submitted_by}</p>
+              <p style={{ fontSize: '13px', color: 'var(--muted-text)' }}>Submitted by: {formatSubmittedBy(selectedRow.checkIn.submitted_by)}</p>
               <p style={{ fontSize: '13px', color: 'var(--muted-text)' }}>{new Date(selectedRow.checkIn.created_at).toLocaleString()}</p>
             </div>
             {can(session.role, 'update_case') && selectedCampaign?.status === 'active' && (

@@ -23,15 +23,14 @@ export function ResidentConsole() {
     barangay_code: profile.barangay_code,
   }
 
-  const activeCampaign = data.campaigns.find(
-    c => c.status === 'active' && c.barangay_code === profile.barangay_code
-  )
+  const activeCampaign = data.campaigns.find(c => c.status === 'active')
+  const activeCampaignNoticeKey = activeCampaign ? `${activeCampaign.id}:${activeCampaign.updated_at}` : null
 
   const hasCheckedIn = activeCampaign
     ? data.checkIns.some(ci => ci.campaign_id === activeCampaign.id && ci.submitted_by === profile.uniqid)
     : false
 
-  const showBanner = activeCampaign && !hasCheckedIn && bannerDismissed !== activeCampaign.id
+  const showBanner = activeCampaign && !hasCheckedIn && bannerDismissed !== activeCampaignNoticeKey
 
   const dashboard = activeCampaign ? getDashboard(activeCampaign.id) : null
 
@@ -101,7 +100,7 @@ export function ResidentConsole() {
               </button>
               <button
                 className="big-btn ghost"
-                onClick={() => setBannerDismissed(activeCampaign.id)}
+                onClick={() => setBannerDismissed(activeCampaignNoticeKey)}
               >
                 No
               </button>
@@ -114,39 +113,15 @@ export function ResidentConsole() {
             <h2 style={{ margin: '0 0 4px', fontSize: 'clamp(20px, 4vw, 28px)', letterSpacing: '-0.04em' }}>
               {activeCampaign.name}
             </h2>
-            <p style={{ color: '#556075', lineHeight: 1.45, fontSize: '14px', marginBottom: '16px' }}>
-              Barangay {activeCampaign.barangay_code} — {activeCampaign.disaster_type}, {activeCampaign.disaster_date}
-            </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-1 gap-3 mb-4">
               <div className="section-card p-[18px]" style={{ border: '1px solid var(--line)', background: '#fff' }}>
                 <strong style={{ display: 'block', fontSize: 'clamp(26px, 5vw, 36px)', color: 'var(--blue-2)', letterSpacing: '-0.05em' }}>
                   {dashboard.affectedCount}
                 </strong>
-                <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>Affected residents</span>
-              </div>
-              <div className="section-card p-[18px]" style={{ border: '1px solid var(--line)', background: '#fff' }}>
-                <strong style={{ display: 'block', fontSize: 'clamp(26px, 5vw, 36px)', color: 'var(--red)', letterSpacing: '-0.05em' }}>
-                  {dashboard.unresolvedCount}
-                </strong>
-                <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>Unresolved cases</span>
+                <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>Residents affected</span>
               </div>
             </div>
-
-            {Object.keys(dashboard.needBreakdown).length > 0 && (
-              <div className="section-card">
-                <h3>Needs reported in your barangay</h3>
-                <div className="flex flex-col gap-2.5 p-4">
-                  {Object.entries(dashboard.needBreakdown).map(([cat, count]) => (
-                    <div key={cat} className="need-item">
-                      <div className="need-icon" />
-                      <strong style={{ fontSize: '14px', color: 'var(--ink)' }}>{cat}</strong>
-                      <strong style={{ fontSize: '18px', color: 'var(--blue-2)' }}>{count}</strong>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </>
         )}
 
@@ -190,7 +165,7 @@ export function ResidentConsole() {
                       style={{ background: '#fff', borderColor: answers[q.id] === 'yes' ? undefined : '#d8e2f6' }}
                       onClick={() => setAnswers(prev => ({ ...prev, [q.id]: prev[q.id] === 'yes' ? 'no' : 'yes' }))}
                     >
-                      <span>
+                      <span style={{ textAlign: 'left' }}>
                         <strong style={{ display: 'block', fontSize: '14px' }}>{q.question_text}</strong>
                         <span style={{ display: 'block', marginTop: '3px', color: '#667085', fontSize: '13px' }}>
                           {q.need_category}
