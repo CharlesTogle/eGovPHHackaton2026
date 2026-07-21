@@ -215,7 +215,7 @@ function ResidentFlow({ data, submitCheckIn }: Pick<StoreProps, 'data' | 'submit
   )
 }
 
-function OfficialConsole({ official, loginOfficial, logoutOfficial, data, createCampaign, addQuestion, removeQuestion, updateCampaignStatus, updateCaseStatus, getDashboard }: Omit<StoreProps, 'submitCheckIn'>) {
+function OfficialConsole({ official, loginOfficial, logoutOfficial, data, createCampaign, addQuestion, removeQuestion, updateCampaignStatus, updateCaseStatus, submitCheckIn, getDashboard }: StoreProps) {
   const [name, setName] = useState('')
   const [disasterType, setDisasterType] = useState('Typhoon')
   const [disasterDate, setDisasterDate] = useState('')
@@ -224,6 +224,9 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, data, create
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null)
   const [selectedRow, setSelectedRow] = useState<DashboardRow | null>(null)
   const [modalStatus, setModalStatus] = useState<CheckInStatus>('unresolved')
+  const [manualEntryOpen, setManualEntryOpen] = useState(false)
+  const [manualHouseholdId, setManualHouseholdId] = useState('')
+  const [manualAnswers, setManualAnswers] = useState<Record<string, string>>({})
 
   const draftCampaigns = data.campaigns.filter(c => c.status === 'draft')
   const activeCampaign = data.campaigns.find(c => c.status === 'active')
@@ -244,6 +247,24 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, data, create
 
   function openModal(row: DashboardRow) { setSelectedRow(row); setModalStatus(row.checkIn?.status ?? 'unresolved') }
   function handleSaveStatus() { if (!selectedRow?.checkIn) return; updateCaseStatus(selectedRow.checkIn.id, modalStatus); setSelectedRow(null) }
+
+  function handleManualSubmit() {
+    if (!activeCampaign || !manualHouseholdId || !official) return
+    const hh = data.households.find(h => h.id === manualHouseholdId)
+    if (!hh) return
+    const answerList = Object.entries(manualAnswers)
+      .filter(([, v]) => v)
+      .map(([question_id, answer]) => ({ question_id, answer }))
+    submitCheckIn({
+      campaign_id: activeCampaign.id,
+      household_id: manualHouseholdId,
+      submitted_by: `${official.name} (manual)`,
+      answers: answerList,
+    })
+    setManualEntryOpen(false)
+    setManualHouseholdId('')
+    setManualAnswers({})
+  }
 
   if (!official) {
     return (
@@ -282,6 +303,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, data, create
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Active Campaign</h2>
             <div className="flex gap-2">
+              <Button size="sm" onClick={() => setManualEntryOpen(true)}>Manual Entry</Button>
               <Button variant="ghost" size="sm" onClick={() => updateCampaignStatus(activeCampaign.id, 'closed')}>Close</Button>
               <Button variant="ghost" size="sm" onClick={() => updateCampaignStatus(activeCampaign.id, 'archived')}>Archive</Button>
             </div>
@@ -464,6 +486,58 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, data, create
               </>
             )}
             {!selectedRow.checkIn && <p className="text-sm text-muted-foreground">No check-in submitted yet.</p>}
+          </div>
+        </div>
+      )}
+
+      {/* --- Manual entry modal --- */}
+      {manualEntryOpen && activeCampaign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setManualEntryOpen(false)}>
+          <div className="bg-white border border-border rounded-xl p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Manual Resident Entry</h2>
+              <Button variant="ghost" size="xs" onClick={() => setManualEntryOpen(false)}>Close</Button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">Field team visited on behalf of the resident. Select household and fill in reported needs.</p>
+
+            <div className="mb-4">
+              <label htmlFor="manual-hh" className="text-sm font-medium text-muted-foreground block mb-1">Household</label>
+              <select id="manual-hh" value={manualHouseholdId} onChange={e => setManualHouseholdId(e.target.value)} className="border border-border rounded-md px-3 py-1.5 text-sm w-full">
+                <option value="">Select household...</option>
+                {data.households.filter(h => h.barangay_code === activeCampaign.barangay_code).map(h => (
+                  <option key={h.id} value={h.id}>{h.household_head_name} — {h.address}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm font-medium text-muted-foreground mb-2">Reported needs</p>
+              <div className="flex flex-col gap-2">
+                {data.questions.filter(q => q.campaign_id === activeCampaign.id).sort((a, b) => a.display_order - b.display_order).map(q => (
+                  <button
+                    key={q.id}
+                    type="button"
+                    className={`w-full text-left border rounded-xl p-3 ${manualAnswers[q.id] === 'yes' ? 'border-[#0646f4] bg-[#eff6ff]' : 'border-border'}`}
+                    onClick={() => setManualAnswers(prev => ({ ...prev, [q.id]: prev[q.id] === 'yes' ? 'no' : 'yes' }))}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <strong className="text-sm">{q.question_text}</strong>
+                        <span className="block text-xs text-muted-foreground">{q.need_category}</span>
+                      </div>
+                      <span className={`text-xs font-medium ${manualAnswers[q.id] === 'yes' ? 'text-[#0646f4]' : 'text-muted-foreground'}`}>
+                        {manualAnswers[q.id] === 'yes' ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={handleManualSubmit} disabled={!manualHouseholdId}>Submit entry</Button>
+              <Button variant="ghost" onClick={() => setManualEntryOpen(false)}>Cancel</Button>
+            </div>
           </div>
         </div>
       )}
