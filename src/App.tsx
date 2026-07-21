@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useHandaStore } from './shared'
+import type { DashboardRow, CheckInStatus } from './shared'
 import { Button } from '@/components/ui/button'
 
 function App() {
   const store = useHandaStore()
-  const { official, loginOfficial, logoutOfficial, data, createCampaign, addQuestion, removeQuestion } = store
+  const { official, loginOfficial, logoutOfficial, data, createCampaign, addQuestion, removeQuestion, updateCampaignStatus, updateCaseStatus, getDashboard } = store
 
   const [name, setName] = useState('')
   const [disasterType, setDisasterType] = useState('Typhoon')
@@ -12,9 +13,12 @@ function App() {
   const [newQ, setNewQ] = useState('')
   const [newCat, setNewCat] = useState('')
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null)
+  const [selectedRow, setSelectedRow] = useState<DashboardRow | null>(null)
+  const [modalStatus, setModalStatus] = useState<CheckInStatus>('unresolved')
 
   const draftCampaigns = data.campaigns.filter(c => c.status === 'draft')
   const activeCampaign = data.campaigns.find(c => c.status === 'active')
+  const dashboard = activeCampaign ? getDashboard(activeCampaign.id) : null
 
   function handleCreateCampaign(e: React.FormEvent) {
     e.preventDefault()
@@ -33,6 +37,17 @@ function App() {
     addQuestion(editingCampaignId, newQ, newCat)
     setNewQ('')
     setNewCat('')
+  }
+
+  function openModal(row: DashboardRow) {
+    setSelectedRow(row)
+    setModalStatus(row.checkIn?.status ?? 'unresolved')
+  }
+
+  function handleSaveStatus() {
+    if (!selectedRow?.checkIn) return
+    updateCaseStatus(selectedRow.checkIn.id, modalStatus)
+    setSelectedRow(null)
   }
 
   if (!official) {
@@ -67,14 +82,92 @@ function App() {
         </div>
       </header>
 
+      {/* --- Active campaign + status buttons --- */}
       {activeCampaign && (
         <div className="border border-border rounded-xl p-4 mb-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground mb-2">Active Campaign</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Active Campaign</h2>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => updateCampaignStatus(activeCampaign.id, 'closed')}>Close</Button>
+              <Button variant="ghost" size="sm" onClick={() => updateCampaignStatus(activeCampaign.id, 'archived')}>Archive</Button>
+            </div>
+          </div>
           <p className="text-sm"><strong>{activeCampaign.name}</strong> — {activeCampaign.disaster_type}, {activeCampaign.disaster_date}</p>
           <span className="inline-block mt-1 bg-[#eff6ff] text-[#0646f4] px-2 py-0.5 rounded-full text-xs font-medium">Active</span>
         </div>
       )}
 
+      {/* --- Dashboard metrics --- */}
+      {dashboard && (
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="border border-border rounded-xl p-4 text-center">
+            <span className="block text-3xl font-bold text-[#0646f4]">{dashboard.affectedCount}</span>
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">Affected</span>
+          </div>
+          <div className="border border-border rounded-xl p-4 text-center">
+            <span className="block text-3xl font-bold text-[#d83a34]">{dashboard.unresolvedCount}</span>
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">Unresolved</span>
+          </div>
+          <div className="border border-border rounded-xl p-4 text-center">
+            <span className="block text-3xl font-bold text-muted-foreground">{dashboard.noCheckInCount}</span>
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">No Check-in</span>
+          </div>
+        </div>
+      )}
+
+      {/* --- Need breakdown --- */}
+      {dashboard && Object.keys(dashboard.needBreakdown).length > 0 && (
+        <div className="border border-border rounded-xl p-4 mb-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground mb-2">Need Breakdown</h2>
+          <div className="flex flex-wrap gap-3">
+            {Object.entries(dashboard.needBreakdown).map(([cat, count]) => (
+              <span key={cat} className="bg-muted text-muted-foreground px-3 py-1 rounded-full text-sm">{cat} {count}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* --- Household queue --- */}
+      {dashboard && (
+        <div className="border border-border rounded-xl p-4 mb-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground mb-3">Household Queue</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b-2 border-border">
+                <th className="text-left py-2 font-semibold text-muted-foreground">Household</th>
+                <th className="text-left py-2 font-semibold text-muted-foreground">Address</th>
+                <th className="text-left py-2 font-semibold text-muted-foreground">Status</th>
+                <th className="text-left py-2 font-semibold text-muted-foreground">Submitted By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dashboard.rows.map(r => (
+                <tr
+                  key={r.household.id}
+                  className="border-b border-border last:border-0 cursor-pointer hover:bg-muted/50"
+                  onClick={() => openModal(r)}
+                >
+                  <td className="py-2">{r.household.household_head_name}</td>
+                  <td className="py-2 text-muted-foreground">{r.household.address}</td>
+                  <td className="py-2">
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                      r.checkIn?.status === 'resolved' ? 'bg-green-50 text-green-700'
+                      : r.checkIn?.status === 'visited' ? 'bg-yellow-50 text-yellow-700'
+                      : r.checkIn?.status === 'unresolved' ? 'bg-red-50 text-red-700'
+                      : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {r.checkIn?.status ?? 'No check-in'}
+                    </span>
+                  </td>
+                  <td className="py-2 text-muted-foreground">{r.submitted_by ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* --- Draft campaigns --- */}
       {draftCampaigns.length > 0 && (
         <div className="border border-border rounded-xl p-4 mb-4">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground mb-2">Draft Campaigns</h2>
@@ -84,6 +177,7 @@ function App() {
                 <span>{c.name} — {c.disaster_type}, {c.disaster_date}</span>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" onClick={() => setEditingCampaignId(c.id)}>Edit</Button>
+                  <Button size="sm" onClick={() => updateCampaignStatus(c.id, 'active')}>Publish</Button>
                 </div>
               </li>
             ))}
@@ -91,6 +185,7 @@ function App() {
         </div>
       )}
 
+      {/* --- Campaign creation form --- */}
       <div className="border border-border rounded-xl p-4 mb-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground mb-3">{editingCampaignId ? 'Edit Campaign' : 'Create Campaign'}</h2>
         <form onSubmit={handleCreateCampaign} className="flex flex-col gap-3">
@@ -118,6 +213,7 @@ function App() {
         </form>
       </div>
 
+      {/* --- Question builder --- */}
       {editingCampaignId && (
         <div className="border border-border rounded-xl p-4 mb-4">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground mb-3">Question Set</h2>
@@ -148,6 +244,70 @@ function App() {
               <Button type="submit" variant="ghost">Add question</Button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* --- Case detail modal --- */}
+      {selectedRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedRow(null)}>
+          <div className="bg-white border border-border rounded-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">Case Detail</h2>
+              <Button variant="ghost" size="xs" onClick={() => setSelectedRow(null)}>Close</Button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm"><strong>{selectedRow.household.household_head_name}</strong></p>
+              <p className="text-xs text-muted-foreground">{selectedRow.household.address}</p>
+              <p className="text-xs text-muted-foreground">{selectedRow.household.member_count} members</p>
+            </div>
+
+            {selectedRow.checkIn && (
+              <>
+                <div className="mb-4">
+                  <label className="text-sm font-medium text-muted-foreground block mb-1">Status</label>
+                  <select
+                    value={modalStatus}
+                    onChange={e => setModalStatus(e.target.value as CheckInStatus)}
+                    className="border border-border rounded-md px-3 py-1.5 text-sm w-full"
+                  >
+                    <option value="unresolved">Unresolved</option>
+                    <option value="visited">Visited</option>
+                    <option value="resolved">Resolved</option>
+                  </select>
+                </div>
+
+                <div className="mb-4">
+                  <p className="text-xs text-muted-foreground mb-1">Submitted by: {selectedRow.submitted_by}</p>
+                </div>
+
+                {selectedRow.answers.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Answers</p>
+                    <ul className="list-none p-0 m-0">
+                      {selectedRow.answers.map(a => {
+                        const q = data.questions.find(q => q.id === a.question_id)
+                        return (
+                          <li key={a.id} className="text-sm py-1 border-b border-border last:border-0">
+                            {q?.question_text ?? 'Unknown'}: <span className={a.answer === 'yes' ? 'text-[#d83a34] font-medium' : 'text-muted-foreground'}>{a.answer}</span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button onClick={handleSaveStatus}>Save</Button>
+                  <Button variant="ghost" onClick={() => setSelectedRow(null)}>Cancel</Button>
+                </div>
+              </>
+            )}
+
+            {!selectedRow.checkIn && (
+              <p className="text-sm text-muted-foreground">No check-in submitted yet.</p>
+            )}
+          </div>
         </div>
       )}
     </div>

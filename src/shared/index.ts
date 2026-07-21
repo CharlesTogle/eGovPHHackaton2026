@@ -66,6 +66,23 @@ export type Official = {
   role: string
 }
 
+// --- Dashboard aggregation ---
+
+export type DashboardRow = {
+  household: Household
+  checkIn: CheckIn | null
+  answers: CheckInAnswer[]
+  submitted_by: string | null
+}
+
+export type Dashboard = {
+  affectedCount: number
+  unresolvedCount: number
+  noCheckInCount: number
+  needBreakdown: Record<string, number>
+  rows: DashboardRow[]
+}
+
 // --- Data store shape ---
 
 export type HandaData = {
@@ -165,7 +182,7 @@ export function useHandaStore() {
       id: uid(),
       ...input,
       status: 'draft',
-      created_by: official.name,
+      created_by: official.uniqid,
       barangay_code: official.barangay_code,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -189,18 +206,65 @@ export function useHandaStore() {
   const updateCampaignStatus = useCallback((campaignId: string, status: CampaignStatus) => {
     setData(d => ({
       ...d,
-      campaigns: d.campaigns.map(c => c.id === campaignId ? { ...c, status, updated_at: new Date().toISOString() } : c),
+      campaigns: d.campaigns.map(c => {
+        if (c.id === campaignId) return { ...c, status, updated_at: new Date().toISOString() }
+        // enforce single active campaign
+        if (status === 'active' && c.status === 'active') return { ...c, status: 'closed' as CampaignStatus, updated_at: new Date().toISOString() }
+        return c
+      }),
     }))
   }, [])
 
-  // Stub: full implementation in later slice
-  const getDashboard = useCallback(() => {
-    return { affectedCount: 0, unresolvedCount: 0, noCheckInCount: 0, needBreakdown: {}, rows: [] }
-  }, [])
+  const getDashboard = useCallback((campaignId: string): Dashboard => {
+    const campaign = data.campaigns.find(c => c.id === campaignId)
+    if (!campaign) return { affectedCount: 0, unresolvedCount: 0, noCheckInCount: 0, needBreakdown: {}, rows: [] }
 
-  // Stub: full implementation in later slice
-  const exportCsv = useCallback(() => {
-    return ''
+    // dedupe by household_id — keep latest check-in per household
+    const byHousehold = new Map<string, CheckIn>()
+    for (const ci of data.checkIns) {
+      if (ci.campaign_id !== campaignId) continue
+      const existing = byHousehold.get(ci.household_id)
+      if (!existing || ci.created_at > existing.created_at) {
+        byHousehold.set(ci.household_id, ci)
+      }
+    }
+
+    const barangayHouseholds = data.households.filter(h => h.barangay_code === campaign.barangay_code)
+    const rows: DashboardRow[] = barangayHouseholds.map(hh => {
+      const ci = byHousehold.get(hh.id) ?? null
+      const answers = ci ? data.answers.filter(a => a.check_in_id === ci.id) : []
+      return { household: hh, checkIn: ci, answers, submitted_by: ci?.submitted_by ?? null }
+    })
+
+    const affected = rows.filter(r => r.checkIn !== null)
+    const unresolved = affected.filter(r => r.checkIn!.status === 'unresolved')
+    const noCheckIn = rows.filter(r => r.checkIn === null)
+
+    // need breakdown: count yes answers by need category
+    const needBreakdown: Record<string, number> = {}
+    for (const r of affected) {
+      for (const a of r.answers) {
+        if (a.answer === 'yes') {
+          const q = data.questions.find(q => q.id === a.question_id)
+          if (q) needBreakdown[q.need_category] = (needBreakdown[q.need_category] ?? 0) + 1
+        }
+      }
+    }
+
+    return {
+      affectedCount: affected.length,
+      unresolvedCount: unresolved.length,
+      noCheckInCount: noCheckIn.length,
+      needBreakdown,
+      rows,
+    }
+  }, [data])
+
+  const updateCaseStatus = useCallback((checkInId: string, status: CheckInStatus) => {
+    setData(d => ({
+      ...d,
+      checkIns: d.checkIns.map(ci => ci.id === checkInId ? { ...ci, status, updated_at: new Date().toISOString() } : ci),
+    }))
   }, [])
 
   return {
@@ -212,7 +276,7 @@ export function useHandaStore() {
     addQuestion,
     removeQuestion,
     updateCampaignStatus,
+    updateCaseStatus,
     getDashboard,
-    exportCsv,
   }
 }
