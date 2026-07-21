@@ -1,28 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useHandaStore, can } from './shared'
 import { Shell } from './components/Shell'
-import type { HandaData, DashboardRow, CheckInStatus } from './shared'
-import type { DemoIdentity } from '@/features/auth/types'
+import type { DashboardRow, CheckInStatus } from './shared'
+import { SessionProvider, useSession } from '@/features/auth/session-context'
+import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
+import { ResidentConsole } from '@/features/resident/ResidentConsole'
 
-type StoreProps = {
-  official: import('./shared').Official | null
-  loginOfficial: (demoIdentity?: DemoIdentity) => Promise<import('./shared').Official | undefined>
-  logoutOfficial: () => void
-  loading: boolean
-  data: HandaData
-  createCampaign: (input: { name: string; disaster_type: string; disaster_date: string }) => Promise<import('./shared').Campaign | null>
-  saveCampaign: (id: string, input: { name: string; disaster_type: string; disaster_date: string }) => Promise<void>
-  addQuestion: (campaignId: string, question_text: string, need_category: string) => void
-  removeQuestion: (questionId: string) => void
-  updateCampaignStatus: (campaignId: string, status: import('./shared').CampaignStatus) => Promise<void>
-  updateCaseStatus: (checkInId: string, status: CheckInStatus) => Promise<void>
-  submitCheckIn: (input: { campaign_id: string; name: string; submitted_by: string; answers: { question_id: string; answer: string }[] }) => Promise<import('./shared').CheckIn>
-  getDashboard: (campaignId: string) => import('./shared').Dashboard
-  exportCsv: (campaignId: string) => string
-  copyQuestions: (sourceCampaignId: string, targetCampaignId: string) => void
-}
+function OfficialConsole() {
+  const { session, logout } = useSession()
+  const store = useHandaStore()
+  const { loading, data, createCampaign, saveCampaign, addQuestion, removeQuestion, updateCampaignStatus, updateCaseStatus, submitCheckIn, getDashboard, exportCsv, copyQuestions } = store
 
-function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, data, createCampaign, saveCampaign, addQuestion, removeQuestion, updateCampaignStatus, updateCaseStatus, submitCheckIn, getDashboard, exportCsv, copyQuestions }: StoreProps) {
   const [name, setName] = useState('')
   const [disasterType, setDisasterType] = useState('Typhoon')
   const [disasterDate, setDisasterDate] = useState('')
@@ -67,6 +55,16 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
   const [queueStatusFilter, setQueueStatusFilter] = useState<CheckInStatus | 'all'>('all')
   const [queueNameSort, setQueueNameSort] = useState<'asc' | 'desc'>('asc')
 
+  if (!session) return null
+
+  const profile = session.profile
+  const official = {
+    name: `${profile.first_name} ${profile.last_name}`,
+    uniqid: profile.uniqid,
+    role: session.role,
+    barangay_code: profile.barangay_code,
+  }
+
   const activeCampaign = data.campaigns.find(c => c.status === 'active')
   const selectedCampaign = selectedCampaignId ? data.campaigns.find(c => c.id === selectedCampaignId) : activeCampaign
   const dashboard = selectedCampaign ? getDashboard(selectedCampaign.id) : null
@@ -94,7 +92,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
       await saveCampaign(existing.id, { name, disaster_type: disasterType, disaster_date: disasterDate })
       showToast('Assessment updated.')
     } else {
-      const c = await createCampaign({ name, disaster_type: disasterType, disaster_date: disasterDate })
+      const c = await createCampaign({ name, disaster_type: disasterType, disaster_date: disasterDate, created_by: profile.uniqid, barangay_code: profile.barangay_code })
       if (c) setEditingCampaignId(c.id)
     }
     setSaving(false)
@@ -111,7 +109,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
   async function handleSaveStatus() { if (!selectedRow) return; await updateCaseStatus(selectedRow.checkIn.id, modalStatus); setSelectedRow(null) }
 
   async function handleManualSubmit() {
-    if (!selectedCampaign || !manualName || !official) return
+    if (!selectedCampaign || !manualName) return
     const answerList = Object.entries(manualAnswers)
       .filter(([, v]) => v)
       .map(([question_id, answer]) => ({ question_id, answer }))
@@ -166,22 +164,6 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
     setPendingAction({ type, campaignId })
   }
 
-  if (!official) {
-    return (
-      <div className="w-full h-full flex items-center justify-center" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
-        <div className="text-center" style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '28px', padding: '32px', maxWidth: '420px', width: '100%' }}>
-          <h2 style={{ margin: 0, fontSize: '24px', letterSpacing: '-0.04em', color: 'var(--ink)' }}>Barangay Official Login</h2>
-          <p style={{ color: '#556075', lineHeight: 1.45, fontSize: '14px', marginTop: '8px' }}>Sign in with your eGovPH account to manage incident assessments.</p>
-          <div className="mt-5" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button className="big-btn primary" onClick={() => loginOfficial('josie')}>Sign in as Josie (Official)</button>
-            <button className="big-btn" onClick={() => loginOfficial('maria')}>Sign in as Maria (Resident)</button>
-            <button className="big-btn" onClick={() => loginOfficial('pedro')}>Sign in as Pedro (Resident)</button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <Shell official={null} sidebarTab="dashboard" onNavigate={() => {}} onLogout={() => {}}>
@@ -220,7 +202,8 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
       official={official}
       sidebarTab={sidebarTab}
       onNavigate={navigate}
-      onLogout={logoutOfficial}
+      onLogout={logout}
+      role="official"
     >
           {sidebarTab === 'dashboard' && (
             <>
@@ -263,21 +246,21 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
                       <span aria-hidden="true">⌄</span>
                     </button>
                     <div id="dashboard-actions" className={`dashboard-actions flex gap-2 flex-wrap ${mobileActionsOpen ? 'open' : ''}`}>
-                      {can(official.role, 'manual_entry') && selectedCampaign?.status === 'active' && (
+                      {can(session.role, 'manual_entry') && selectedCampaign?.status === 'active' && (
                         <button className="pill-btn ghost text-xs sm:text-sm" onClick={() => setManualEntryOpen(true)}>Manual entry</button>
                       )}
-                      {can(official.role, 'export_csv') && (
+                      {can(session.role, 'export_csv') && (
                         <button className="pill-btn primary text-xs sm:text-sm" onClick={handleExportCsv}>Export CSV</button>
                       )}
                       {selectedCampaign.status !== 'archived' && (
                         <>
-                          {selectedCampaign.status !== 'active' && can(official.role, 'publish_campaign') && (
+                          {selectedCampaign.status !== 'active' && can(session.role, 'publish_campaign') && (
                             <button className="pill-btn primary text-xs sm:text-sm" onClick={() => confirmAction('publish', selectedCampaign.id)}>Publish</button>
                           )}
-                          {selectedCampaign.status !== 'closed' && can(official.role, 'close_campaign') && (
+                          {selectedCampaign.status !== 'closed' && can(session.role, 'close_campaign') && (
                             <button className="pill-btn ghost text-xs sm:text-sm" onClick={() => confirmAction('close', selectedCampaign.id)}>Close</button>
                           )}
-                          {can(official.role, 'archive_campaign') && (
+                          {can(session.role, 'archive_campaign') && (
                             <button className="pill-btn ghost text-xs sm:text-sm" onClick={() => confirmAction('archive', selectedCampaign.id)}>Archive</button>
                           )}
                         </>
@@ -403,7 +386,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
               <p style={{ color: '#556075', lineHeight: 1.45, fontSize: '14px' }}>Reusable question sets keep recurring typhoon, flood, and fire assessments fast.</p>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-                {can(official.role, 'create_campaign') && (
+                {can(session.role, 'create_campaign') && (
                 <div className="form-card">
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ink)' }}>Create assessment</h3>
                   <form onSubmit={handleCreateCampaign} className="flex flex-col gap-4 mt-3">
@@ -430,7 +413,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
                 </div>
                 )}
 
-                {can(official.role, 'edit_questions') && (
+                {can(session.role, 'edit_questions') && (
                 <div className="form-card">
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: 'var(--ink)' }}>Question set</h3>
                   {editingCampaignId ? (
@@ -442,7 +425,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
                               <strong style={{ display: 'block', fontSize: '14px', color: 'var(--ink)' }}>{q.question_text}</strong>
                               <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--muted-text)' }}>Need category: {q.need_category}</p>
                             </div>
-                            {can(official.role, 'edit_questions') && (
+                            {can(session.role, 'edit_questions') && (
                               <button className="pill-btn ghost" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => removeQuestion(q.id)}>Remove</button>
                             )}
                           </div>
@@ -501,7 +484,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
                       <li key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 text-sm" style={{ borderBottom: '1px solid #edf1f8' }}>
                         <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{c.name} — {c.disaster_type}, {c.disaster_date}</span>
                         <div className="flex gap-2">
-                          {can(official.role, 'edit_questions') && (
+                          {can(session.role, 'edit_questions') && (
                             <button className="pill-btn ghost" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => {
                               setName(c.name)
                               setDisasterType(c.disaster_type)
@@ -510,7 +493,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
                               navigate('campaigns')
                             }}>Edit</button>
                           )}
-                          {can(official.role, 'publish_campaign') && c.status === 'draft' && (
+                          {can(session.role, 'publish_campaign') && c.status === 'draft' && (
                             <button className="pill-btn primary" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => confirmAction('publish', c.id)}>Publish</button>
                           )}
                         </div>
@@ -535,6 +518,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
         <button className={`toolbar-tab ${sidebarTab === 'campaigns' ? 'active' : ''}`} onClick={() => navigate('campaigns')}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+            <line x1="4" y1="22" x2="4" y2="22"/>
             <line x1="4" y1="22" x2="4" y2="15"/>
           </svg>
           <span>Assessments</span>
@@ -554,7 +538,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
               <p style={{ fontSize: '13px', color: 'var(--muted-text)' }}>Submitted by: {selectedRow.checkIn.submitted_by}</p>
               <p style={{ fontSize: '13px', color: 'var(--muted-text)' }}>{new Date(selectedRow.checkIn.created_at).toLocaleString()}</p>
             </div>
-            {can(official.role, 'update_case') && selectedCampaign?.status === 'active' && (
+            {can(session.role, 'update_case') && selectedCampaign?.status === 'active' && (
             <div className="mb-4">
               <label className="block mb-2" style={{ fontWeight: 800, fontSize: '14px', color: '#313a4c' }}>Status</label>
               <select value={modalStatus} onChange={e => setModalStatus(e.target.value as CheckInStatus)} className="w-full min-h-[48px] rounded-2xl px-3 py-3 text-sm" style={{ border: '1px solid #cdd8ed', background: '#fff', color: 'var(--ink)' }}>
@@ -580,7 +564,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
               </div>
             )}
             <div className="flex gap-3">
-              {can(official.role, 'update_case') && selectedCampaign?.status === 'active' && (
+              {can(session.role, 'update_case') && selectedCampaign?.status === 'active' && (
                 <button className="big-btn primary" onClick={handleSaveStatus}>Save</button>
               )}
               <button className="big-btn ghost" onClick={() => setSelectedRow(null)}>Cancel</button>
@@ -693,11 +677,23 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
 }
 
 export default function App() {
-  const store = useHandaStore()
-
   return (
-    <div className="min-h-[100dvh] w-full overflow-hidden" style={{ background: '#fff', fontFamily: 'Arial, Helvetica, sans-serif' }}>
-      <OfficialConsole {...store} />
-    </div>
+    <SessionProvider>
+      <ProtectedRoute>
+        <AppRouter />
+      </ProtectedRoute>
+    </SessionProvider>
   )
+}
+
+function AppRouter() {
+  const { session } = useSession()
+  
+  if (!session) return null
+  
+  if (session.role === 'resident') {
+    return <ResidentConsole />
+  }
+  
+  return <OfficialConsole />
 }

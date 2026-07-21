@@ -4,9 +4,11 @@ export type ShellProps = {
   onNavigate: (tab: 'dashboard' | 'campaigns') => void
   onLogout: () => void
   children: React.ReactNode
+  role?: 'official' | 'resident'
 }
 
-export function Shell({ official, sidebarTab, onNavigate, onLogout, children }: ShellProps) {
+export function Shell({ official, sidebarTab, onNavigate, onLogout, children, role = 'official' }: ShellProps) {
+  const isResident = role === 'resident'
   return (
     <div className="w-full" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
       <header className="glass-topbar flex items-center justify-between gap-4 py-[14px] px-4 md:px-7 min-h-[60px] border-b" style={{ background: '#fff', borderColor: 'var(--line)' }}>
@@ -14,7 +16,7 @@ export function Shell({ official, sidebarTab, onNavigate, onLogout, children }: 
           <img src="public/egovph-logo.png" alt="eGovPH" className="h-8 md:h-9 w-auto" />
           <div>
             <strong style={{ display: 'block', fontSize: '18px', color: 'var(--ink)' }}>HANDA</strong>
-            <span className="hidden md:inline" style={{ color: 'var(--muted-text)', fontSize: '14px' }}>Barangay Dashboard</span>
+            <span className="hidden md:inline" style={{ color: 'var(--muted-text)', fontSize: '14px' }}>{isResident ? 'Resident Portal' : 'Barangay Dashboard'}</span>
           </div>
         </div>
         {official && (
@@ -37,12 +39,14 @@ export function Shell({ official, sidebarTab, onNavigate, onLogout, children }: 
       </header>
 
       <div className="dashboard-layout">
-        <aside className="dashboard-sidebar hidden md:block">
-          <div className="flex flex-col gap-1">
-            <button className={`side-link ${sidebarTab === 'dashboard' ? 'active' : ''}`} onClick={() => onNavigate('dashboard')}>Dashboard</button>
-            <button className={`side-link ${sidebarTab === 'campaigns' ? 'active' : ''}`} onClick={() => onNavigate('campaigns')}>Assessments</button>
-          </div>
-        </aside>
+        {!isResident && (
+          <aside className="dashboard-sidebar hidden md:block">
+            <div className="flex flex-col gap-1">
+              <button className={`side-link ${sidebarTab === 'dashboard' ? 'active' : ''}`} onClick={() => onNavigate('dashboard')}>Dashboard</button>
+              <button className={`side-link ${sidebarTab === 'campaigns' ? 'active' : ''}`} onClick={() => onNavigate('campaigns')}>Assessments</button>
+            </div>
+          </aside>
+        )}
         <div className="dashboard-main">
           {children}
         </div>

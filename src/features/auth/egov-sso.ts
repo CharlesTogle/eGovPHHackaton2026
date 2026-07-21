@@ -110,6 +110,10 @@ async function ssoAuthentication(accessToken: string): Promise<EgovProfile> {
 export async function runSSO(identity?: DemoIdentity): Promise<EgovProfile> {
   if (USE_MOCK) {
     await new Promise((r) => setTimeout(r, 600))
+    const mockExchangeCode = crypto.randomUUID()
+    const mockAccessToken = crypto.randomUUID()
+    console.log("[SSO MOCK] exchange_code:", mockExchangeCode)
+    console.log("[SSO MOCK] access_token:", mockAccessToken)
     return MOCK_PROFILES[identity ?? "josie"]
   }
   const exchangeCode = await generateExchangeCode()

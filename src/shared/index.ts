@@ -1,9 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
 import * as supabaseDb from './supabase'
-import { runSSO, type DemoIdentity } from '@/features/auth/egov-sso'
-import type { EgovProfile } from '@/features/auth/types'
-
-// --- Types matching supabase/migrations/20250101000000_initial_schema.sql ---
 
 export type CampaignStatus = 'draft' | 'active' | 'closed' | 'archived'
 export type CheckInStatus = 'unresolved' | 'visited' | 'resolved'
@@ -45,38 +41,7 @@ export type CheckInAnswer = {
   answer: string
 }
 
-// --- Official session (eGovPH SSO) ---
-
-export type OfficialRole = 'official'
-
-export type Official = {
-  uniqid: string
-  name: string
-  barangay_code: string
-  barangay: string
-  role: OfficialRole
-  email?: string
-  first_name?: string
-  last_name?: string
-  photo?: string | null
-}
-
-// Adapter: convert EgovProfile to Official
-function egovProfileToOfficial(profile: EgovProfile): Official {
-  return {
-    uniqid: profile.uniqid,
-    name: `${profile.first_name} ${profile.last_name}`,
-    barangay_code: profile.barangay_code,
-    barangay: profile.barangay,
-    role: 'official',
-    email: profile.email,
-    first_name: profile.first_name,
-    last_name: profile.last_name,
-    photo: profile.photo,
-  }
-}
-
-// --- RBAC ---
+export type OfficialRole = 'official' | 'resident'
 
 export type Permission =
   | 'create_campaign'
@@ -87,6 +52,8 @@ export type Permission =
   | 'manual_entry'
   | 'update_case'
   | 'export_csv'
+  | 'view_dashboard'
+  | 'respond_to_disaster'
 
 const ROLE_PERMISSIONS: Record<OfficialRole, Permission[]> = {
   official: [
@@ -98,14 +65,14 @@ const ROLE_PERMISSIONS: Record<OfficialRole, Permission[]> = {
     'manual_entry',
     'update_case',
     'export_csv',
+    'view_dashboard',
   ],
+  resident: ['view_dashboard', 'respond_to_disaster'],
 }
 
 export function can(role: OfficialRole, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false
 }
-
-// --- Dashboard aggregation ---
 
 export type DashboardRow = {
   checkIn: CheckIn
@@ -119,16 +86,12 @@ export type Dashboard = {
   rows: DashboardRow[]
 }
 
-// --- Data store shape ---
-
 export type HandaData = {
   campaigns: Campaign[]
   questions: CampaignQuestion[]
   checkIns: CheckIn[]
   answers: CheckInAnswer[]
 }
-
-// --- Initial empty state ---
 
 const emptyData: HandaData = {
   campaigns: [],
@@ -137,34 +100,12 @@ const emptyData: HandaData = {
   answers: [],
 }
 
-// --- Hook: single source of truth ---
-
 function uid(): string {
   return crypto.randomUUID()
 }
 
-const SESSION_KEY = 'handa_session'
-
-function loadSession(): Official | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY)
-    return raw ? JSON.parse(raw) as Official : null
-  } catch {
-    return null
-  }
-}
-
-function saveSession(official: Official | null) {
-  if (official) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(official))
-  } else {
-    localStorage.removeItem(SESSION_KEY)
-  }
-}
-
 export function useHandaStore() {
   const [data, setData] = useState<HandaData>(emptyData)
-  const [official, setOfficial] = useState<Official | null>(loadSession)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -174,48 +115,21 @@ export function useHandaStore() {
     })
   }, [])
 
-  const loginOfficial = useCallback(async (demoIdentity?: DemoIdentity) => {
-    try {
-      const profile = await runSSO(demoIdentity)
-      const official = egovProfileToOfficial(profile)
-      setOfficial(official)
-      saveSession(official)
-      return official
-    } catch (error) {
-      console.error('SSO login failed:', error)
-      throw error
-    }
-  }, [])
-
-  const logoutOfficial = useCallback(() => {
-    setOfficial(null)
-    saveSession(null)
-  }, [])
-
-  const createCampaign = useCallback(async (input: { name: string; disaster_type: string; disaster_date: string }) => {
-    if (!official) return null
+  const createCampaign = useCallback(async (input: { name: string; disaster_type: string; disaster_date: string; created_by: string; barangay_code: string }) => {
     const c: Campaign = {
       id: uid(),
-      ...input,
+      name: input.name,
+      disaster_type: input.disaster_type,
+      disaster_date: input.disaster_date,
       status: 'draft',
-      created_by: official.uniqid,
-      barangay_code: official.barangay_code,
+      created_by: input.created_by,
+      barangay_code: input.barangay_code,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
     setData(d => ({ ...d, campaigns: [...d.campaigns, c] }))
     await supabaseDb.insertCampaign(c)
     return c
-  }, [official])
-
-  const updateCampaign = useCallback((id: string, input: { name: string; disaster_type: string; disaster_date: string }) => {
-    setData(d => ({
-      ...d,
-      campaigns: d.campaigns.map(c =>
-        c.id === id ? { ...c, ...input, updated_at: new Date().toISOString() } : c
-      ),
-    }))
-    supabaseDb.updateCampaignDb(id, input)
   }, [])
 
   const saveCampaign = useCallback(async (id: string, input: { name: string; disaster_type: string; disaster_date: string }) => {
@@ -351,13 +265,9 @@ export function useHandaStore() {
   }, [data])
 
   return {
-    official,
-    loginOfficial,
-    logoutOfficial,
     loading,
     data,
     createCampaign,
-    updateCampaign,
     saveCampaign,
     addQuestion,
     removeQuestion,

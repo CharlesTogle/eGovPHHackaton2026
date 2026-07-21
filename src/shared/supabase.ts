@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase'
 import type {
   Campaign,
   CampaignQuestion,
@@ -8,12 +8,6 @@ import type {
   CampaignStatus,
   CheckInStatus,
 } from './index'
-
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
-
-export const supabase: ReturnType<typeof createClient> | null =
-  url && key ? createClient(url, key) : null
 
 const db = () => supabase
 
