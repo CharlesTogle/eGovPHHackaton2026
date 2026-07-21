@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useHandaStore, can } from './shared'
 import { Shell } from './components/Shell'
 import type { HandaData, DashboardRow, CheckInStatus } from './shared'
+import type { DemoIdentity } from '@/features/auth/types'
 
 type StoreProps = {
   official: import('./shared').Official | null
-  loginOfficial: () => void
+  loginOfficial: (demoIdentity?: DemoIdentity) => Promise<import('./shared').Official | undefined>
   logoutOfficial: () => void
   loading: boolean
   data: HandaData
@@ -160,7 +161,11 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
         <div className="text-center" style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '28px', padding: '32px', maxWidth: '420px', width: '100%' }}>
           <h2 style={{ margin: 0, fontSize: '24px', letterSpacing: '-0.04em', color: 'var(--ink)' }}>Barangay Official Login</h2>
           <p style={{ color: '#556075', lineHeight: 1.45, fontSize: '14px', marginTop: '8px' }}>Sign in with your eGovPH account to manage incident assessments.</p>
-          <button className="big-btn primary mt-5" onClick={loginOfficial}>Sign in as Official</button>
+          <div className="mt-5" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button className="big-btn primary" onClick={() => loginOfficial('josie')}>Sign in as Josie (Official)</button>
+            <button className="big-btn" onClick={() => loginOfficial('maria')}>Sign in as Maria (Resident)</button>
+            <button className="big-btn" onClick={() => loginOfficial('pedro')}>Sign in as Pedro (Resident)</button>
+          </div>
         </div>
       </div>
     )

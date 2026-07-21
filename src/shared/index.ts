@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import * as supabaseDb from './supabase'
+import { runSSO, type DemoIdentity } from '@/features/auth/egov-sso'
+import type { EgovProfile } from '@/features/auth/types'
 
 // --- Types matching supabase/migrations/20250101000000_initial_schema.sql ---
 
@@ -43,7 +45,7 @@ export type CheckInAnswer = {
   answer: string
 }
 
-// --- Official session (mock eGovPH SSO) ---
+// --- Official session (eGovPH SSO) ---
 
 export type OfficialRole = 'official'
 
@@ -51,7 +53,27 @@ export type Official = {
   uniqid: string
   name: string
   barangay_code: string
+  barangay: string
   role: OfficialRole
+  email?: string
+  first_name?: string
+  last_name?: string
+  photo?: string | null
+}
+
+// Adapter: convert EgovProfile to Official
+function egovProfileToOfficial(profile: EgovProfile): Official {
+  return {
+    uniqid: profile.uniqid,
+    name: `${profile.first_name} ${profile.last_name}`,
+    barangay_code: profile.barangay_code,
+    barangay: profile.barangay,
+    role: 'official',
+    email: profile.email,
+    first_name: profile.first_name,
+    last_name: profile.last_name,
+    photo: profile.photo,
+  }
 }
 
 // --- RBAC ---
@@ -152,15 +174,17 @@ export function useHandaStore() {
     })
   }, [])
 
-  const loginOfficial = useCallback(() => {
-    const o: Official = {
-      uniqid: 'OFF-001',
-      name: 'Barangay Capt. Reyes',
-      barangay_code: 'BRG-001',
-      role: 'official',
+  const loginOfficial = useCallback(async (demoIdentity?: DemoIdentity) => {
+    try {
+      const profile = await runSSO(demoIdentity)
+      const official = egovProfileToOfficial(profile)
+      setOfficial(official)
+      saveSession(official)
+      return official
+    } catch (error) {
+      console.error('SSO login failed:', error)
+      throw error
     }
-    setOfficial(o)
-    saveSession(o)
   }, [])
 
   const logoutOfficial = useCallback(() => {
