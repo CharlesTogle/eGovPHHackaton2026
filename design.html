@@ -1,0 +1,1410 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HANDA eGovPH Mockup</title>
+    <style>
+      :root {
+        --blue: #0646f4;
+        --blue-2: #1236c8;
+        --red: #d83a34;
+        --gold: #f2b51d;
+        --ink: #202735;
+        --muted: #667085;
+        --line: #e6ebf5;
+        --soft: #f3f6fd;
+        --card: #ffffff;
+        --bg: #eef3fb;
+        --good: #138a4b;
+        --warn: #b35a04;
+        --radius: 28px;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        background: var(--bg);
+        color: var(--ink);
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      .page {
+        width: min(1480px, 100%);
+        margin: 0 auto;
+        padding: 28px;
+      }
+
+      .topbar {
+        min-height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 22px;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(255, 255, 255, 0.78);
+        box-shadow: 0 18px 50px rgba(25, 57, 116, 0.08);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .egov-logo {
+        display: block;
+        width: clamp(112px, 16vw, 178px);
+        height: auto;
+        object-fit: contain;
+      }
+
+      .brand-copy strong {
+        display: block;
+        font-size: 18px;
+      }
+
+      .brand-copy span {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .nav-pills {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+      }
+
+      .nav-pills a,
+      .small-btn {
+        color: var(--ink);
+        text-decoration: none;
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-size: 14px;
+      }
+
+      .small-btn {
+        cursor: pointer;
+      }
+
+      .small-btn.primary,
+      .primary-btn {
+        background: var(--blue);
+        border-color: var(--blue);
+        color: #fff;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 0.92fr 1.08fr;
+        gap: 28px;
+        align-items: start;
+        padding: 30px 0 8px;
+      }
+
+      .brief-card,
+      .stage-card,
+      .web-panel {
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.84);
+        border-radius: var(--radius);
+        box-shadow: 0 20px 70px rgba(28, 50, 96, 0.12);
+      }
+
+      .brief-card {
+        padding: 28px;
+      }
+
+      .brief-card h1 {
+        margin: 0;
+        max-width: 12ch;
+        font-size: clamp(40px, 6vw, 76px);
+        line-height: 0.98;
+        letter-spacing: -0.06em;
+      }
+
+      .brief-card p {
+        max-width: 55ch;
+        margin: 18px 0 0;
+        color: #455065;
+        font-size: 17px;
+        line-height: 1.55;
+      }
+
+      .dial-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .dial {
+        padding: 14px;
+        border-radius: 18px;
+        background: var(--soft);
+        border: 1px solid var(--line);
+      }
+
+      .dial span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .dial strong {
+        display: block;
+        margin-top: 5px;
+        color: var(--blue-2);
+        font-size: 18px;
+      }
+
+      .flow-grid {
+        display: grid;
+        grid-template-columns: 430px 1fr;
+        gap: 28px;
+        align-items: start;
+      }
+
+      .phone-shell {
+        position: sticky;
+        top: 20px;
+        width: min(430px, 100%);
+        margin: 0 auto;
+        border-radius: 52px;
+        padding: 14px;
+        background: #1c1d21;
+        box-shadow: 0 26px 70px rgba(12, 25, 56, 0.24);
+      }
+
+      .phone {
+        position: relative;
+        min-height: 880px;
+        overflow: hidden;
+        border-radius: 40px;
+        background: #fff;
+      }
+
+      .notch {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 150px;
+        height: 34px;
+        transform: translateX(-50%);
+        border-radius: 0 0 22px 22px;
+        background: #1c1d21;
+        z-index: 2;
+      }
+
+      .statusbar {
+        height: 54px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 28px;
+        font-weight: 700;
+        font-size: 15px;
+      }
+
+      .status-icons {
+        display: flex;
+        gap: 5px;
+        align-items: end;
+      }
+
+      .bar {
+        width: 4px;
+        border-radius: 2px;
+        background: #1b1d21;
+      }
+
+      .bar:nth-child(1) { height: 7px; }
+      .bar:nth-child(2) { height: 10px; }
+      .bar:nth-child(3) { height: 13px; }
+      .battery {
+        width: 24px;
+        height: 12px;
+        border: 2px solid #1b1d21;
+        border-radius: 4px;
+        margin-left: 5px;
+      }
+
+      .mobile-screen {
+        display: none;
+        min-height: 826px;
+        padding: 24px 26px 118px;
+      }
+
+      .mobile-screen.active {
+        display: block;
+      }
+
+      .mobile-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 20px;
+      }
+
+      .bell {
+        position: relative;
+        width: 36px;
+        height: 36px;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .bell::before {
+        content: "";
+        position: absolute;
+        inset: 8px 9px 7px;
+        border-radius: 10px 10px 7px 7px;
+        background: var(--blue);
+      }
+
+      .bell::after {
+        content: "";
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--red);
+        border: 2px solid #fff;
+      }
+
+      .profile-row {
+        display: grid;
+        grid-template-columns: 58px 1fr 144px;
+        gap: 14px;
+        align-items: center;
+        margin-top: 34px;
+      }
+
+      .avatar {
+        width: 58px;
+        height: 58px;
+        border-radius: 50%;
+        background: url("https://picsum.photos/seed/josie-resident-profile/160/160") center / cover;
+      }
+
+      .hello strong {
+        display: block;
+        color: var(--blue);
+        font-size: 28px;
+        letter-spacing: -0.04em;
+      }
+
+      .hello span {
+        color: #3d4250;
+        font-size: 16px;
+      }
+
+      .flag-art {
+        height: 112px;
+        border-radius: 60px 60px 16px 16px;
+        background:
+          radial-gradient(circle at 50% 28%, var(--gold) 0 18%, transparent 19%),
+          linear-gradient(132deg, transparent 0 34%, #163ad9 35% 48%, var(--red) 49% 64%, transparent 65%),
+          radial-gradient(circle at 50% 88%, #75b65c 0 22%, transparent 23%),
+          #fff2b8;
+        border-bottom: 9px solid #83c7f0;
+      }
+
+      .service-card {
+        margin-top: 28px;
+        border-radius: 22px;
+        padding: 18px;
+        background: linear-gradient(135deg, #eef5ff, #fff);
+        border: 1px solid #dce7fa;
+      }
+
+      .service-card strong {
+        display: block;
+        color: var(--blue);
+        font-size: 26px;
+        line-height: 1.05;
+      }
+
+      .service-card p {
+        margin: 8px 0 14px;
+        color: #4d586d;
+        line-height: 1.35;
+      }
+
+      .primary-btn,
+      .ghost-btn,
+      .danger-btn {
+        min-height: 48px;
+        border-radius: 999px;
+        padding: 12px 18px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        font-weight: 800;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+      }
+
+      .primary-btn:active,
+      .ghost-btn:active,
+      .danger-btn:active,
+      .nav-pills a:active,
+      .small-btn:active {
+        transform: translateY(1px);
+      }
+
+      .ghost-btn {
+        background: #fff;
+        color: var(--blue-2);
+        border-color: #c8d6f5;
+      }
+
+      .danger-btn {
+        background: var(--red);
+        color: #fff;
+      }
+
+      .service-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 18px 12px;
+        margin-top: 26px;
+      }
+
+      .service {
+        text-align: center;
+        color: #535b6c;
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .service-icon {
+        position: relative;
+        width: 72px;
+        height: 72px;
+        margin: 0 auto 8px;
+        border-radius: 50%;
+        background: #edf2ff;
+      }
+
+      .service-icon::before {
+        content: "";
+        position: absolute;
+        inset: 21px 23px 18px;
+        border: 5px solid var(--blue);
+        border-top-width: 8px;
+        border-radius: 2px;
+      }
+
+      .service.report .service-icon::before {
+        border-radius: 50%;
+        border-color: var(--blue);
+      }
+
+      .service.handa .service-icon {
+        background: var(--blue);
+        box-shadow: 0 10px 24px rgba(6, 70, 244, 0.22);
+      }
+
+      .service.handa .service-icon::before {
+        border-color: #fff;
+      }
+
+      .bottom-nav {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 96px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        align-items: center;
+        background: rgba(255, 255, 255, 0.96);
+        border-top: 1px solid var(--line);
+        box-shadow: 0 -16px 34px rgba(38, 55, 92, 0.08);
+      }
+
+      .nav-item {
+        text-align: center;
+        color: #777f90;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .nav-item.active {
+        color: var(--blue);
+      }
+
+      .nav-box {
+        width: 24px;
+        height: 24px;
+        margin: 0 auto 5px;
+        border-radius: 7px;
+        border: 4px solid currentColor;
+      }
+
+      .nav-item.mobile-id .nav-box {
+        width: 68px;
+        height: 68px;
+        margin-top: -34px;
+        border-radius: 50%;
+        border-color: var(--blue);
+        background: var(--blue);
+        box-shadow: 0 12px 28px rgba(6, 70, 244, 0.3);
+      }
+
+      .alert-card {
+        margin-top: 34px;
+        padding: 22px;
+        border-radius: 28px;
+        background: #fff;
+        border: 1px solid #dfe7f7;
+        box-shadow: 0 16px 34px rgba(32, 58, 102, 0.12);
+      }
+
+      .alert-type {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--red);
+        font-weight: 900;
+        font-size: 14px;
+      }
+
+      .alert-card h2 {
+        margin: 12px 0 8px;
+        font-size: 30px;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+      }
+
+      .alert-card p {
+        color: #4e596f;
+        line-height: 1.45;
+      }
+
+      .button-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+      }
+
+      .question-stack {
+        display: grid;
+        gap: 14px;
+        margin-top: 22px;
+      }
+
+      .choice,
+      .household-choice {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        width: 100%;
+        min-height: 62px;
+        padding: 15px 16px;
+        border: 1px solid #d8e2f6;
+        border-radius: 18px;
+        background: #fff;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .choice strong,
+      .household-choice strong {
+        display: block;
+      }
+
+      .choice span,
+      .household-choice span {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .selected {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px rgba(6, 70, 244, 0.1);
+      }
+
+      .progress {
+        height: 8px;
+        margin-top: 26px;
+        border-radius: 999px;
+        background: #e7eefc;
+        overflow: hidden;
+      }
+
+      .progress span {
+        display: block;
+        height: 100%;
+        width: var(--w);
+        border-radius: inherit;
+        background: var(--blue);
+      }
+
+      .form-field {
+        display: grid;
+        gap: 8px;
+        margin-top: 16px;
+      }
+
+      .form-field label {
+        font-weight: 800;
+        color: #313a4c;
+      }
+
+      .form-field input,
+      .form-field select,
+      .form-field textarea {
+        width: 100%;
+        min-height: 48px;
+        border: 1px solid #cdd8ed;
+        border-radius: 16px;
+        padding: 12px 14px;
+        background: #fff;
+        color: var(--ink);
+      }
+
+      .helper {
+        color: #5e687b;
+        font-size: 13px;
+      }
+
+      .error-text {
+        color: #b42318;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .success-mark {
+        display: grid;
+        place-items: center;
+        width: 92px;
+        height: 92px;
+        margin: 34px auto 20px;
+        border-radius: 50%;
+        background: #e6f6ee;
+        color: var(--good);
+        font-size: 48px;
+        font-weight: 900;
+      }
+
+      .center-copy {
+        text-align: center;
+      }
+
+      .center-copy h2 {
+        margin: 0;
+        font-size: 30px;
+        letter-spacing: -0.04em;
+      }
+
+      .center-copy p {
+        color: #566176;
+        line-height: 1.45;
+      }
+
+      .stage-card {
+        padding: 20px;
+      }
+
+      .stage-card h2,
+      .web-panel h2 {
+        margin: 0;
+        font-size: 28px;
+        letter-spacing: -0.04em;
+      }
+
+      .stage-card p,
+      .web-panel p {
+        color: #556075;
+        line-height: 1.45;
+      }
+
+      .screen-tabs {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        margin-top: 18px;
+      }
+
+      .screen-tabs button {
+        min-height: 44px;
+        border: 1px solid #d6e0f1;
+        border-radius: 14px;
+        background: #fff;
+        color: #344054;
+        cursor: pointer;
+        font-weight: 800;
+      }
+
+      .screen-tabs button.active {
+        background: var(--blue);
+        color: #fff;
+        border-color: var(--blue);
+      }
+
+      .web-panel {
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+
+      .dashboard-shell {
+        display: grid;
+        grid-template-columns: 230px 1fr;
+        gap: 18px;
+        margin-top: 18px;
+        min-height: 520px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        overflow: hidden;
+        background: #fff;
+      }
+
+      .sidebar {
+        padding: 18px;
+        background: #f8faff;
+        border-right: 1px solid var(--line);
+      }
+
+      .side-link {
+        display: block;
+        padding: 12px 14px;
+        border-radius: 14px;
+        color: #344054;
+        text-decoration: none;
+        font-weight: 800;
+      }
+
+      .side-link.active {
+        background: #e9efff;
+        color: var(--blue-2);
+      }
+
+      .web-main {
+        padding: 20px;
+      }
+
+      .web-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr 0.8fr;
+        gap: 14px;
+      }
+
+      .metric {
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: #fff;
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 36px;
+        color: var(--blue-2);
+        letter-spacing: -0.05em;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .content-split {
+        display: grid;
+        grid-template-columns: 1fr 0.68fr;
+        gap: 14px;
+        margin-top: 14px;
+      }
+
+      .table-card,
+      .need-card,
+      .state-card {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: #fff;
+        overflow: hidden;
+      }
+
+      .table-head,
+      .need-card h3,
+      .state-card h3 {
+        margin: 0;
+        padding: 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        padding: 13px 16px;
+        text-align: left;
+        border-bottom: 1px solid #edf1f8;
+      }
+
+      th {
+        color: #4b5568;
+        background: #f8faff;
+      }
+
+      .status-chip {
+        display: inline-flex;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .status-chip.open {
+        background: #fff4e5;
+        color: var(--warn);
+      }
+
+      .status-chip.good {
+        background: #e7f7ef;
+        color: var(--good);
+      }
+
+      .need-list {
+        display: grid;
+        gap: 10px;
+        padding: 16px;
+      }
+
+      .need-item {
+        display: grid;
+        grid-template-columns: 42px 1fr auto;
+        gap: 12px;
+        align-items: center;
+        padding: 12px;
+        border-radius: 16px;
+        background: #f7f9fe;
+      }
+
+      .need-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        background: #e8efff;
+        border: 3px solid var(--blue);
+      }
+
+      .web-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-top: 16px;
+      }
+
+      .form-card {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 18px;
+        background: #fff;
+      }
+
+      .question-card {
+        padding: 14px;
+        border-radius: 16px;
+        background: #f8faff;
+        border: 1px solid var(--line);
+        margin-top: 12px;
+      }
+
+      .state-row {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid #edf1f8;
+      }
+
+      .skeleton {
+        height: 16px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #edf2fb 0%, #f8faff 45%, #edf2fb 90%);
+        margin: 12px 0;
+      }
+
+      .empty-state,
+      .error-state {
+        padding: 22px;
+        border-radius: 20px;
+        border: 1px dashed #cad6ec;
+        background: #fbfcff;
+      }
+
+      .error-state {
+        border-color: #f1b6b3;
+        background: #fff7f7;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-items: center;
+        padding: 20px;
+        background: rgba(23, 34, 55, 0.38);
+        z-index: 5;
+      }
+
+      .modal-backdrop.open {
+        display: grid;
+      }
+
+      .modal {
+        width: min(620px, 100%);
+        max-height: min(780px, 92dvh);
+        overflow: auto;
+        padding: 24px;
+        border-radius: 28px;
+        background: #fff;
+        box-shadow: 0 30px 90px rgba(7, 17, 40, 0.26);
+      }
+
+      .modal h2 {
+        margin: 0;
+        font-size: 28px;
+        letter-spacing: -0.04em;
+      }
+
+      .toast {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        display: none;
+        max-width: 360px;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: #102f8f;
+        color: #fff;
+        box-shadow: 0 18px 50px rgba(12, 36, 92, 0.28);
+        z-index: 6;
+      }
+
+      .toast.show {
+        display: block;
+      }
+
+      .resident-notif {
+        position: absolute;
+        left: 18px;
+        right: 18px;
+        top: 66px;
+        display: none;
+        padding: 14px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid #dde7f8;
+        box-shadow: 0 18px 40px rgba(32, 58, 102, 0.2);
+        z-index: 3;
+      }
+
+      .resident-notif.open {
+        display: block;
+      }
+
+      .resident-notif strong {
+        display: block;
+        color: var(--blue-2);
+      }
+
+      .resident-notif p {
+        margin: 5px 0 0;
+        color: #4c5669;
+        font-size: 13px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          transition: none !important;
+          scroll-behavior: auto !important;
+        }
+      }
+
+      @media (max-width: 1120px) {
+        .hero,
+        .flow-grid,
+        .dashboard-shell,
+        .content-split,
+        .web-grid-2 {
+          grid-template-columns: 1fr;
+        }
+
+        .phone-shell {
+          position: static;
+        }
+
+        .nav-pills {
+          display: none;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .page {
+          padding: 12px;
+        }
+
+        .topbar {
+          border-radius: 18px;
+        }
+
+        .brand-copy {
+          display: none;
+        }
+
+        .brief-card,
+        .stage-card,
+        .web-panel {
+          border-radius: 22px;
+          padding: 18px;
+        }
+
+        .dial-row,
+        .metric-grid,
+        .screen-tabs {
+          grid-template-columns: 1fr;
+        }
+
+        .phone-shell {
+          width: 100%;
+          padding: 8px;
+          border-radius: 36px;
+        }
+
+        .phone {
+          min-height: 780px;
+          border-radius: 30px;
+        }
+
+        .mobile-screen {
+          min-height: 730px;
+          padding: 20px 18px 108px;
+        }
+
+        .profile-row {
+          grid-template-columns: 52px 1fr;
+        }
+
+        .flag-art {
+          grid-column: 1 / -1;
+        }
+
+        .service-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+
+        .sidebar {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        th:nth-child(3),
+        td:nth-child(3) {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="topbar" aria-label="Mockup header">
+        <div class="brand">
+          <img class="egov-logo" src="public/egovph-logo.png" alt="eGovPH logo" />
+          <div class="brand-copy">
+            <strong>HANDA</strong>
+            <span>Hazard Assessment and Needs Determination Application</span>
+          </div>
+        </div>
+        <nav class="nav-pills" aria-label="Sections">
+          <a href="#resident">Resident flow</a>
+          <a href="#teams">Team console</a>
+          <a href="#states">States</a>
+          <button class="small-btn primary" type="button" data-modal="campaignModal">Create campaign</button>
+        </nav>
+      </header>
+
+      <section class="hero" aria-labelledby="title">
+        <div class="brief-card">
+          <h1 id="title">Disaster check-ins inside eGovPH.</h1>
+          <p>HANDA lets barangays find affected households quickly, collect needs, and hand off a clean list to local response teams.</p>
+          <div class="dial-row" aria-label="Design settings">
+            <div class="dial"><span>DESIGN_VARIANCE</span><strong>3</strong></div>
+            <div class="dial"><span>MOTION_INTENSITY</span><strong>2</strong></div>
+            <div class="dial"><span>VISUAL_DENSITY</span><strong>5</strong></div>
+          </div>
+        </div>
+        <div class="stage-card">
+          <h2>Mockup coverage</h2>
+          <p>This file contains the resident mobile flow, notification prompt, household match, succeeding questions, confirmation, team dashboard, campaign builder, case modal, manual entry, loading, empty, and error states.</p>
+          <div class="screen-tabs" aria-label="Resident screen switcher">
+            <button type="button" class="active" data-screen="home">Home</button>
+            <button type="button" data-screen="prompt">Prompt</button>
+            <button type="button" data-screen="match">Match</button>
+            <button type="button" data-screen="questions">Questions</button>
+            <button type="button" data-screen="done">Done</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="resident" class="flow-grid" aria-label="Resident mobile flow">
+        <div class="phone-shell">
+          <div class="phone">
+            <div class="notch"></div>
+            <div class="statusbar"><span>9:41</span><span class="status-icons"><i class="bar"></i><i class="bar"></i><i class="bar"></i><i class="battery"></i></span></div>
+            <aside class="resident-notif" id="residentNotif" role="status">
+              <strong>Barangay San Isidro needs your check-in</strong>
+              <p>Typhoon Odette assessment is open. Answering takes less than one minute.</p>
+            </aside>
+
+            <section class="mobile-screen active" data-mobile="home" aria-label="eGovPH home">
+              <div class="mobile-head">
+                <img class="egov-logo" src="public/egovph-logo.png" alt="eGovPH logo" />
+                <button class="bell" type="button" aria-label="Show notification" id="showNotif"></button>
+              </div>
+              <div class="profile-row">
+                <div class="avatar" role="img" aria-label="Resident profile photo"></div>
+                <div class="hello"><strong>Hi, Josie</strong><span>+63 917 123 4567</span></div>
+                <div class="flag-art" aria-hidden="true"></div>
+              </div>
+              <div class="service-card">
+                <strong>HANDA check-in</strong>
+                <p>Tell your barangay if your household was affected by the latest disaster.</p>
+                <button class="primary-btn" type="button" data-go="prompt">Open HANDA</button>
+              </div>
+              <div class="service-grid" aria-label="eGovPH services">
+                <div class="service"><div class="service-icon"></div>NGAs</div>
+                <div class="service"><div class="service-icon"></div>LGUs</div>
+                <div class="service"><div class="service-icon"></div>Jobs</div>
+                <div class="service"><div class="service-icon"></div>Market</div>
+                <div class="service"><div class="service-icon"></div>Travel</div>
+                <div class="service"><div class="service-icon"></div>Health</div>
+                <div class="service report"><div class="service-icon"></div>Report</div>
+                <div class="service handa"><div class="service-icon"></div>HANDA</div>
+              </div>
+            </section>
+
+            <section class="mobile-screen" data-mobile="prompt" aria-label="Are you affected prompt">
+              <div class="mobile-head">
+                <img class="egov-logo" src="public/egovph-logo.png" alt="eGovPH logo" />
+                <button class="bell" type="button" aria-label="Notifications"></button>
+              </div>
+              <div class="progress" aria-label="Step 1 of 4"><span style="--w: 25%"></span></div>
+              <div class="alert-card">
+                <span class="alert-type">Typhoon assessment</span>
+                <h2>Are you affected by Typhoon Odette?</h2>
+                <p>Barangay San Isidro is checking which households need shelter, medical help, food, or water.</p>
+                <div class="button-row">
+                  <button class="danger-btn" type="button" data-go="match">Yes, affected</button>
+                  <button class="ghost-btn" type="button" data-go="done">No, safe</button>
+                </div>
+              </div>
+              <div class="alert-card">
+                <strong>Plain language mode</strong>
+                <p>Available in English and Filipino. No address typing is required when profile matching works.</p>
+              </div>
+            </section>
+
+            <section class="mobile-screen" data-mobile="match" aria-label="Household match">
+              <div class="mobile-head">
+                <button class="ghost-btn" type="button" data-go="prompt">Back</button>
+                <img class="egov-logo" src="public/egovph-logo.png" alt="eGovPH logo" />
+              </div>
+              <div class="progress" aria-label="Step 2 of 4"><span style="--w: 50%"></span></div>
+              <div class="alert-card">
+                <h2>Confirm your household</h2>
+                <p>We matched your eGovPH profile to the barangay household list.</p>
+                <button class="household-choice selected" type="button" data-go="questions">
+                  <span><strong>Reyes Household</strong><span>Blk 4 Lot 8, Purok Sampaguita</span></span>
+                  <strong>Use</strong>
+                </button>
+                <button class="household-choice" type="button" data-modal="householdModal">
+                  <span><strong>Not your household?</strong><span>Select from the barangay list</span></span>
+                  <strong>Find</strong>
+                </button>
+              </div>
+            </section>
+
+            <section class="mobile-screen" data-mobile="questions" aria-label="Follow-up questions">
+              <div class="mobile-head">
+                <button class="ghost-btn" type="button" data-go="match">Back</button>
+                <img class="egov-logo" src="public/egovph-logo.png" alt="eGovPH logo" />
+              </div>
+              <div class="progress" aria-label="Step 3 of 4"><span style="--w: 75%"></span></div>
+              <div class="alert-card">
+                <h2>What does your household need?</h2>
+                <div class="question-stack">
+                  <button class="choice selected" type="button"><span><strong>Home damaged</strong><span>Roof, walls, flood damage, or unsafe structure</span></span><strong>Yes</strong></button>
+                  <button class="choice selected" type="button"><span><strong>Food or water</strong><span>Shortage within the next two days</span></span><strong>Yes</strong></button>
+                  <button class="choice" type="button"><span><strong>Medical attention</strong><span>Injury, medicine, pregnancy, or urgent care</span></span><strong>No</strong></button>
+                </div>
+                <div class="form-field">
+                  <label for="resident-note">Additional details</label>
+                  <textarea id="resident-note" rows="3">Roof panels are missing. Two children and one senior are at home.</textarea>
+                  <span class="helper">This helps the barangay prioritize visits.</span>
+                </div>
+                <div class="button-row">
+                  <button class="primary-btn" type="button" data-go="done">Submit report</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="mobile-screen" data-mobile="done" aria-label="Confirmation">
+              <div class="mobile-head">
+                <img class="egov-logo" src="public/egovph-logo.png" alt="eGovPH logo" />
+                <button class="bell" type="button" aria-label="Notifications"></button>
+              </div>
+              <div class="success-mark" aria-hidden="true">✓</div>
+              <div class="center-copy">
+                <h2>Report sent</h2>
+                <p>Your barangay can now see your household needs. A responder may visit if follow-up is needed.</p>
+                <button class="primary-btn" type="button" data-go="home">Return home</button>
+              </div>
+            </section>
+
+            <nav class="bottom-nav" aria-label="eGovPH mobile navigation">
+              <div class="nav-item active"><div class="nav-box"></div>Home</div>
+              <div class="nav-item"><div class="nav-box"></div>News</div>
+              <div class="nav-item mobile-id"><div class="nav-box"></div>Mobile ID</div>
+              <div class="nav-item"><div class="nav-box"></div>Scan QR</div>
+              <div class="nav-item"><div class="nav-box"></div>Account</div>
+            </nav>
+          </div>
+        </div>
+
+        <div id="teams" aria-label="Barangay team screens">
+          <section class="web-panel">
+            <h2>Barangay response console</h2>
+            <p>Officials create campaigns, add questions, monitor affected households, resolve visits, and export the final list.</p>
+            <div class="dashboard-shell">
+              <aside class="sidebar" aria-label="Team navigation">
+                <img class="egov-logo" src="public/egovph-logo.png" alt="eGovPH logo" />
+                <a class="side-link active" href="#teams">Dashboard</a>
+                <a class="side-link" href="#campaigns">Campaigns</a>
+                <a class="side-link" href="#cases">Households</a>
+                <a class="side-link" href="#states">System states</a>
+              </aside>
+              <div class="web-main">
+                <div class="web-head">
+                  <div>
+                    <h2>Typhoon Odette</h2>
+                    <p>Barangay San Isidro, active campaign</p>
+                  </div>
+                  <div class="button-row">
+                    <button class="ghost-btn" type="button" data-modal="manualModal">Manual entry</button>
+                    <button class="primary-btn" type="button" id="exportBtn">Export CSV</button>
+                  </div>
+                </div>
+                <div class="metric-grid">
+                  <div class="metric"><strong>184</strong><span>Affected households</span></div>
+                  <div class="metric"><strong>39</strong><span>Unresolved</span></div>
+                  <div class="metric"><strong>72</strong><span>No check-in</span></div>
+                </div>
+                <div class="content-split">
+                  <div class="table-card" id="cases">
+                    <h3 class="table-head">Household queue</h3>
+                    <table>
+                      <thead><tr><th>Household</th><th>Needs</th><th>Address</th><th>Status</th></tr></thead>
+                      <tbody>
+                        <tr><td>Reyes</td><td>Shelter, food</td><td>Purok Sampaguita</td><td><button class="status-chip open" type="button" data-modal="caseModal">Unresolved</button></td></tr>
+                        <tr><td>Santos</td><td>Medical</td><td>Purok Gumamela</td><td><span class="status-chip open">Visited</span></td></tr>
+                        <tr><td>Dela Cruz</td><td>Water</td><td>Purok Narra</td><td><span class="status-chip good">Resolved</span></td></tr>
+                        <tr><td>Macaraeg</td><td>Shelter</td><td>Purok Mabini</td><td><span class="status-chip open">Unresolved</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="need-card">
+                    <h3>Need breakdown</h3>
+                    <div class="need-list">
+                      <div class="need-item"><div class="need-icon"></div><strong>Shelter</strong><strong>86</strong></div>
+                      <div class="need-item"><div class="need-icon"></div><strong>Food or water</strong><strong>124</strong></div>
+                      <div class="need-item"><div class="need-icon"></div><strong>Medical</strong><strong>21</strong></div>
+                      <div class="need-item"><div class="need-icon"></div><strong>Field visit</strong><strong>72</strong></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="web-panel" id="campaigns">
+            <h2>Campaign and question builder</h2>
+            <p>Reusable question sets keep recurring typhoon, flood, and fire assessments fast.</p>
+            <div class="web-grid-2">
+              <div class="form-card">
+                <h3>Create campaign</h3>
+                <div class="form-field"><label for="campaign-name">Disaster name</label><input id="campaign-name" value="Typhoon Odette" /><span class="helper">Shown to residents in the check-in prompt.</span></div>
+                <div class="form-field"><label for="campaign-type">Disaster type</label><select id="campaign-type"><option>Typhoon</option><option>Flood</option><option>Fire</option><option>Earthquake</option></select></div>
+                <div class="form-field"><label for="campaign-date">Disaster date</label><input id="campaign-date" type="date" value="2026-07-21" /></div>
+                <div class="button-row"><button class="primary-btn" type="button">Publish</button><button class="ghost-btn" type="button">Save draft</button></div>
+              </div>
+              <div class="form-card">
+                <h3>Question set</h3>
+                <div class="question-card"><strong>Is your home damaged?</strong><p>Need category: shelter</p></div>
+                <div class="question-card"><strong>Do you need medical attention?</strong><p>Need category: medical</p></div>
+                <div class="question-card"><strong>Is your family short on food or water?</strong><p>Need category: food_water</p></div>
+                <button class="ghost-btn" type="button">Reuse typhoon set</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="web-panel" id="states">
+            <h2>States, modules, and feedback</h2>
+            <p>Mocked operational states for demo completeness without adding extra pages.</p>
+            <div class="web-grid-2">
+              <div class="state-card">
+                <h3>Loading dashboard</h3>
+                <div style="padding: 16px">
+                  <div class="skeleton" style="width: 72%"></div>
+                  <div class="skeleton" style="width: 94%"></div>
+                  <div class="skeleton" style="width: 58%"></div>
+                </div>
+              </div>
+              <div class="empty-state">
+                <h3>No active campaign</h3>
+                <p>Create or publish a campaign before residents can check in.</p>
+                <button class="primary-btn" type="button" data-modal="campaignModal">Create campaign</button>
+              </div>
+              <div class="error-state">
+                <h3>Export failed</h3>
+                <p>CSV export could not be prepared. Check connection and try again.</p>
+                <button class="ghost-btn" type="button">Retry export</button>
+              </div>
+              <div class="state-card">
+                <h3>Module map</h3>
+                <div class="state-row"><strong>CheckInFlow</strong><span>Resident prompt, match, questions, confirmation</span></div>
+                <div class="state-row"><strong>HouseholdMatcher</strong><span>Automatic household match and candidate selection</span></div>
+                <div class="state-row"><strong>DashboardAggregator</strong><span>Counts, needs, unresolved cases, non-respondents</span></div>
+                <div class="state-row"><strong>ExportService</strong><span>CSV hand-off for LGU or relief organizations</span></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div class="modal-backdrop" id="campaignModal" role="dialog" aria-modal="true" aria-labelledby="campaignModalTitle">
+      <div class="modal">
+        <h2 id="campaignModalTitle">Create disaster campaign</h2>
+        <div class="form-field"><label for="modal-campaign-name">Name</label><input id="modal-campaign-name" value="Typhoon Odette" /></div>
+        <div class="form-field"><label for="modal-campaign-type">Type</label><select id="modal-campaign-type"><option>Typhoon</option><option>Flood</option><option>Fire</option></select></div>
+        <div class="form-field"><label for="modal-question">First question</label><input id="modal-question" value="Is your home damaged?" /><span class="helper">Add more questions after saving.</span></div>
+        <div class="button-row"><button class="primary-btn" type="button" data-close>Save campaign</button><button class="ghost-btn" type="button" data-close>Cancel</button></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="householdModal" role="dialog" aria-modal="true" aria-labelledby="householdModalTitle">
+      <div class="modal">
+        <h2 id="householdModalTitle">Select household</h2>
+        <div class="form-field"><label for="household-search">Search by household head or address</label><input id="household-search" value="Reyes" /></div>
+        <button class="household-choice selected" type="button" data-close><span><strong>Reyes Household</strong><span>Blk 4 Lot 8, Purok Sampaguita</span></span><strong>Select</strong></button>
+        <button class="household-choice" type="button" data-close><span><strong>Reyes - Annex</strong><span>Blk 2 Lot 11, Purok Narra</span></span><strong>Select</strong></button>
+        <div class="button-row"><button class="ghost-btn" type="button" data-close>Close</button></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="caseModal" role="dialog" aria-modal="true" aria-labelledby="caseModalTitle">
+      <div class="modal">
+        <h2 id="caseModalTitle">Reyes household case</h2>
+        <p>Needs: shelter, food or water. Address: Blk 4 Lot 8, Purok Sampaguita.</p>
+        <div class="form-field"><label for="case-status">Resolution status</label><select id="case-status"><option>Unresolved</option><option>Visited</option><option>Resolved</option></select></div>
+        <div class="form-field"><label for="case-note">Team note</label><textarea id="case-note" rows="3">Dispatch team should check roof damage and drinking water supply.</textarea></div>
+        <div class="button-row"><button class="primary-btn" type="button" data-close>Update case</button><button class="ghost-btn" type="button" data-close>Close</button></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="manualModal" role="dialog" aria-modal="true" aria-labelledby="manualModalTitle">
+      <div class="modal">
+        <h2 id="manualModalTitle">Manual resident entry</h2>
+        <p>For offline field deployment when a household cannot use the app.</p>
+        <div class="form-field"><label for="manual-household">Household</label><input id="manual-household" value="Santos Household" /></div>
+        <div class="form-field"><label for="manual-need">Reported need</label><select id="manual-need"><option>Medical</option><option>Shelter</option><option>Food or water</option></select></div>
+        <div class="form-field"><label for="manual-note">Field note</label><textarea id="manual-note" rows="3">Submitted by barangay responder after house visit.</textarea></div>
+        <div class="button-row"><button class="primary-btn" type="button" data-close>Save entry</button><button class="ghost-btn" type="button" data-close>Cancel</button></div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status">CSV export prepared for the active campaign.</div>
+
+    <script>
+      const screens = document.querySelectorAll("[data-mobile]");
+      const tabs = document.querySelectorAll("[data-screen]");
+      const notif = document.getElementById("residentNotif");
+      const toast = document.getElementById("toast");
+
+      function showScreen(name) {
+        screens.forEach((screen) => screen.classList.toggle("active", screen.dataset.mobile === name));
+        tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.screen === name));
+        notif.classList.remove("open");
+      }
+
+      document.addEventListener("click", (event) => {
+        const target = event.target.closest("button");
+        if (!target) return;
+
+        if (target.dataset.go) showScreen(target.dataset.go);
+
+        if (target.dataset.screen) showScreen(target.dataset.screen);
+
+        if (target.dataset.modal) document.getElementById(target.dataset.modal).classList.add("open");
+
+        if (target.hasAttribute("data-close")) target.closest(".modal-backdrop").classList.remove("open");
+
+        if (target.id === "showNotif") notif.classList.toggle("open");
+
+        if (target.id === "exportBtn") {
+          toast.classList.add("show");
+          window.setTimeout(() => toast.classList.remove("show"), 2400);
+        }
+      });
+
+      document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+        backdrop.addEventListener("click", (event) => {
+          if (event.target === backdrop) backdrop.classList.remove("open");
+        });
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        document.querySelectorAll(".modal-backdrop.open").forEach((modal) => modal.classList.remove("open"));
+      });
+    </script>
+  </body>
+</html>
