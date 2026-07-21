@@ -9,13 +9,13 @@ type StoreProps = {
   logoutOfficial: () => void
   loading: boolean
   data: HandaData
-  createCampaign: (input: { name: string; disaster_type: string; disaster_date: string }) => import('./shared').Campaign | null
-  saveCampaign: (id: string, input: { name: string; disaster_type: string; disaster_date: string }) => void
+  createCampaign: (input: { name: string; disaster_type: string; disaster_date: string }) => Promise<import('./shared').Campaign | null>
+  saveCampaign: (id: string, input: { name: string; disaster_type: string; disaster_date: string }) => Promise<void>
   addQuestion: (campaignId: string, question_text: string, need_category: string) => void
   removeQuestion: (questionId: string) => void
-  updateCampaignStatus: (campaignId: string, status: import('./shared').CampaignStatus) => void
-  updateCaseStatus: (checkInId: string, status: CheckInStatus) => void
-  submitCheckIn: (input: { campaign_id: string; name: string; submitted_by: string; answers: { question_id: string; answer: string }[] }) => import('./shared').CheckIn
+  updateCampaignStatus: (campaignId: string, status: import('./shared').CampaignStatus) => Promise<void>
+  updateCaseStatus: (checkInId: string, status: CheckInStatus) => Promise<void>
+  submitCheckIn: (input: { campaign_id: string; name: string; submitted_by: string; answers: { question_id: string; answer: string }[] }) => Promise<import('./shared').CheckIn>
   getDashboard: (campaignId: string) => import('./shared').Dashboard
   exportCsv: (campaignId: string) => string
   copyQuestions: (sourceCampaignId: string, targetCampaignId: string) => void
@@ -199,6 +199,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
   }
 
   return (
+    <>
     <Shell
       official={official}
       sidebarTab={sidebarTab}
@@ -207,23 +208,23 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
     >
           {sidebarTab === 'dashboard' && (
             <>
-              <div className="flex items-center gap-3 mb-5">
-                <label htmlFor="campaign-select" className="text-sm font-bold" style={{ color: '#313a4c', whiteSpace: 'nowrap' }}>Assessment:</label>
-                <select
-                  id="campaign-select"
-                  value={selectedCampaignId ?? ''}
-                  onChange={e => setSelectedCampaignId(e.target.value || null)}
-                  className="min-h-[44px] rounded-2xl px-3 py-2 text-sm min-w-0 flex-1"
-                  style={{ border: '1px solid #cdd8ed', background: '#fff', color: 'var(--ink)', maxWidth: '480px' }}
-                >
-                  <option value="">— Select an assessment —</option>
-                  {viewableCampaigns.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.status})</option>
-                  ))}
-                </select>
-              </div>
-              {selectedCampaign ? (
-                <>
+              <div className="dashboard-sticky-head">
+                <div className="flex items-center gap-3 mb-5">
+                  <label htmlFor="campaign-select" className="text-sm font-bold" style={{ color: '#313a4c', whiteSpace: 'nowrap' }}>Assessment:</label>
+                  <select
+                    id="campaign-select"
+                    value={selectedCampaignId ?? ''}
+                    onChange={e => setSelectedCampaignId(e.target.value || null)}
+                    className="min-h-[44px] rounded-2xl px-3 py-2 text-sm min-w-0 flex-1"
+                    style={{ border: '1px solid #cdd8ed', background: '#fff', color: 'var(--ink)', maxWidth: '480px' }}
+                  >
+                    <option value="">— Select an assessment —</option>
+                    {viewableCampaigns.map(c => (
+                      <option key={c.id} value={c.id}>{c.name} ({c.status})</option>
+                    ))}
+                  </select>
+                </div>
+                {selectedCampaign && (
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div>
                       <div className="flex items-center gap-3 mb-1">
@@ -257,7 +258,11 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
                       )}
                     </div>
                   </div>
+                )}
+                </div>
 
+              {selectedCampaign ? (
+                <>
                   {dashboard && (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -457,8 +462,6 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
               )}
             </>
           )}
-        </div>
-      </div>
 
       <nav className="bottom-toolbar md:hidden">
         <button className={`toolbar-tab ${sidebarTab === 'dashboard' ? 'active' : ''}`} onClick={() => navigate('dashboard')}>
@@ -478,6 +481,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
           <span>Assessments</span>
         </button>
       </nav>
+    </Shell>
 
       {selectedRow && (
         <div className="modal-overlay" onClick={() => setSelectedRow(null)}>
@@ -625,7 +629,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
           {toastMsg}
         </div>
       )}
-    </div>
+  </>
   )
 }
 
