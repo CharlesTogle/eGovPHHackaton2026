@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import * as supabaseDb from './supabase'
 
 // --- Types matching supabase/migrations/20250101000000_initial_schema.sql ---
 
@@ -25,25 +26,10 @@ export type CampaignQuestion = {
   display_order: number
 }
 
-export type Household = {
-  id: string
-  barangay_code: string
-  household_head_name: string
-  address: string
-  member_count: number
-}
-
-export type HouseholdMember = {
-  id: string
-  household_id: string
-  first_name: string
-  last_name: string
-}
-
 export type CheckIn = {
   id: string
   campaign_id: string
-  household_id: string
+  name: string
   submitted_by: string
   status: CheckInStatus
   created_at: string
@@ -59,26 +45,54 @@ export type CheckInAnswer = {
 
 // --- Official session (mock eGovPH SSO) ---
 
+export type OfficialRole = 'official'
+
 export type Official = {
   uniqid: string
   name: string
   barangay_code: string
-  role: string
+  role: OfficialRole
+}
+
+// --- RBAC ---
+
+export type Permission =
+  | 'create_campaign'
+  | 'edit_questions'
+  | 'publish_campaign'
+  | 'close_campaign'
+  | 'archive_campaign'
+  | 'manual_entry'
+  | 'update_case'
+  | 'export_csv'
+
+const ROLE_PERMISSIONS: Record<OfficialRole, Permission[]> = {
+  official: [
+    'create_campaign',
+    'edit_questions',
+    'publish_campaign',
+    'close_campaign',
+    'archive_campaign',
+    'manual_entry',
+    'update_case',
+    'export_csv',
+  ],
+}
+
+export function can(role: OfficialRole, permission: Permission): boolean {
+  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false
 }
 
 // --- Dashboard aggregation ---
 
 export type DashboardRow = {
-  household: Household
-  checkIn: CheckIn | null
+  checkIn: CheckIn
   answers: CheckInAnswer[]
-  submitted_by: string | null
 }
 
 export type Dashboard = {
   affectedCount: number
   unresolvedCount: number
-  noCheckInCount: number
   needBreakdown: Record<string, number>
   rows: DashboardRow[]
 }
@@ -88,95 +102,73 @@ export type Dashboard = {
 export type HandaData = {
   campaigns: Campaign[]
   questions: CampaignQuestion[]
-  households: Household[]
-  members: HouseholdMember[]
   checkIns: CheckIn[]
   answers: CheckInAnswer[]
 }
 
-// --- Seed data ---
+// --- Initial empty state ---
 
-const now = new Date().toISOString()
-
-const seedHouseholds: Household[] = [
-  { id: 'hh-1', barangay_code: 'BRG-001', household_head_name: 'Juan Dela Cruz', address: '123 Rizal St', member_count: 5 },
-  { id: 'hh-2', barangay_code: 'BRG-001', household_head_name: 'Maria Santos', address: '456 Mabini Ave', member_count: 3 },
-  { id: 'hh-3', barangay_code: 'BRG-001', household_head_name: 'Pedro Reyes', address: '789 Bonifacio Blvd', member_count: 4 },
-  { id: 'hh-4', barangay_code: 'BRG-001', household_head_name: 'Ana Garcia', address: '321 Luna St', member_count: 2 },
-  { id: 'hh-5', barangay_code: 'BRG-001', household_head_name: 'Jose Mendoza', address: '654 Aguinaldo Hwy', member_count: 6 },
-]
-
-const seedMembers: HouseholdMember[] = [
-  { id: 'm-1', household_id: 'hh-1', first_name: 'Juan', last_name: 'Dela Cruz' },
-  { id: 'm-2', household_id: 'hh-1', first_name: 'Rosa', last_name: 'Dela Cruz' },
-  { id: 'm-3', household_id: 'hh-1', first_name: 'Carlos', last_name: 'Dela Cruz' },
-  { id: 'm-4', household_id: 'hh-2', first_name: 'Maria', last_name: 'Santos' },
-  { id: 'm-5', household_id: 'hh-2', first_name: 'Luis', last_name: 'Santos' },
-  { id: 'm-6', household_id: 'hh-3', first_name: 'Pedro', last_name: 'Reyes' },
-  { id: 'm-7', household_id: 'hh-3', first_name: 'Teresa', last_name: 'Reyes' },
-  { id: 'm-8', household_id: 'hh-4', first_name: 'Ana', last_name: 'Garcia' },
-  { id: 'm-9', household_id: 'hh-5', first_name: 'Jose', last_name: 'Mendoza' },
-  { id: 'm-10', household_id: 'hh-5', first_name: 'Grace', last_name: 'Mendoza' },
-]
-
-const seedQuestions: CampaignQuestion[] = [
-  { id: 'q-1', campaign_id: 'c-1', question_text: 'Is your home damaged?', need_category: 'Shelter', display_order: 0 },
-  { id: 'q-2', campaign_id: 'c-1', question_text: 'Do you need food or water?', need_category: 'Food or water', display_order: 1 },
-  { id: 'q-3', campaign_id: 'c-1', question_text: 'Do you need medical attention?', need_category: 'Medical', display_order: 2 },
-]
-
-const seedCheckIns: CheckIn[] = [
-  { id: 'ci-1', campaign_id: 'c-1', household_id: 'hh-1', submitted_by: 'Juan Dela Cruz', status: 'visited', created_at: now, updated_at: now },
-  { id: 'ci-2', campaign_id: 'c-1', household_id: 'hh-2', submitted_by: 'Maria Santos', status: 'unresolved', created_at: now, updated_at: now },
-]
-
-const seedAnswers: CheckInAnswer[] = [
-  { id: 'a-1', check_in_id: 'ci-1', question_id: 'q-1', answer: 'yes' },
-  { id: 'a-2', check_in_id: 'ci-1', question_id: 'q-2', answer: 'no' },
-  { id: 'a-3', check_in_id: 'ci-1', question_id: 'q-3', answer: 'no' },
-  { id: 'a-4', check_in_id: 'ci-2', question_id: 'q-1', answer: 'yes' },
-  { id: 'a-5', check_in_id: 'ci-2', question_id: 'q-2', answer: 'yes' },
-  { id: 'a-6', check_in_id: 'ci-2', question_id: 'q-3', answer: 'yes' },
-]
-
-const seedCampaigns: Campaign[] = [
-  { id: 'c-1', name: 'Typhoon Odette Response', disaster_type: 'Typhoon', disaster_date: '2025-01-15', status: 'active', created_by: 'Admin', barangay_code: 'BRG-001', created_at: now, updated_at: now },
-]
-
-const seedData: HandaData = {
-  campaigns: seedCampaigns,
-  questions: seedQuestions,
-  households: seedHouseholds,
-  members: seedMembers,
-  checkIns: seedCheckIns,
-  answers: seedAnswers,
+const emptyData: HandaData = {
+  campaigns: [],
+  questions: [],
+  checkIns: [],
+  answers: [],
 }
 
 // --- Hook: single source of truth ---
 
-let nextId = 100
 function uid(): string {
-  return `id-${++nextId}`
+  return crypto.randomUUID()
+}
+
+const SESSION_KEY = 'handa_session'
+
+function loadSession(): Official | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    return raw ? JSON.parse(raw) as Official : null
+  } catch {
+    return null
+  }
+}
+
+function saveSession(official: Official | null) {
+  if (official) {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(official))
+  } else {
+    localStorage.removeItem(SESSION_KEY)
+  }
 }
 
 export function useHandaStore() {
-  const [data, setData] = useState<HandaData>(seedData)
-  const [official, setOfficial] = useState<Official | null>(null)
+  const [data, setData] = useState<HandaData>(emptyData)
+  const [official, setOfficial] = useState<Official | null>(loadSession)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabaseDb.loadAll().then(remote => {
+      if (remote) setData(remote)
+      setLoading(false)
+    })
+  }, [])
 
   const loginOfficial = useCallback(() => {
-    setOfficial({
+    const o: Official = {
       uniqid: 'OFF-001',
       name: 'Barangay Capt. Reyes',
       barangay_code: 'BRG-001',
       role: 'official',
-    })
+    }
+    setOfficial(o)
+    saveSession(o)
   }, [])
 
   const logoutOfficial = useCallback(() => {
     setOfficial(null)
+    saveSession(null)
   }, [])
 
-  const createCampaign = useCallback((input: { name: string; disaster_type: string; disaster_date: string }) => {
+  const createCampaign = useCallback(async (input: { name: string; disaster_type: string; disaster_date: string }) => {
     if (!official) return null
     const c: Campaign = {
       id: uid(),
@@ -188,61 +180,68 @@ export function useHandaStore() {
       updated_at: new Date().toISOString(),
     }
     setData(d => ({ ...d, campaigns: [...d.campaigns, c] }))
+    await supabaseDb.insertCampaign(c)
     return c
   }, [official])
 
-  const addQuestion = useCallback((campaignId: string, question_text: string, need_category: string) => {
-    setData(d => {
-      const order = d.questions.filter(q => q.campaign_id === campaignId).length
-      const q: CampaignQuestion = { id: uid(), campaign_id: campaignId, question_text, need_category, display_order: order }
-      return { ...d, questions: [...d.questions, q] }
-    })
+  const updateCampaign = useCallback((id: string, input: { name: string; disaster_type: string; disaster_date: string }) => {
+    setData(d => ({
+      ...d,
+      campaigns: d.campaigns.map(c =>
+        c.id === id ? { ...c, ...input, updated_at: new Date().toISOString() } : c
+      ),
+    }))
+    supabaseDb.updateCampaignDb(id, input)
   }, [])
+
+  const saveCampaign = useCallback(async (id: string, input: { name: string; disaster_type: string; disaster_date: string }) => {
+    setData(d => ({
+      ...d,
+      campaigns: d.campaigns.map(c =>
+        c.id === id ? { ...c, ...input, updated_at: new Date().toISOString() } : c
+      ),
+    }))
+    await supabaseDb.updateCampaignDb(id, input)
+    const qs = data.questions.filter(q => q.campaign_id === id)
+    await supabaseDb.replaceQuestions(id, qs)
+  }, [data])
+
+  const addQuestion = useCallback((campaignId: string, question_text: string, need_category: string) => {
+    const order = data.questions.filter(q => q.campaign_id === campaignId).length
+    const q: CampaignQuestion = { id: uid(), campaign_id: campaignId, question_text, need_category, display_order: order }
+    setData(d => ({ ...d, questions: [...d.questions, q] }))
+  }, [data])
 
   const removeQuestion = useCallback((questionId: string) => {
     setData(d => ({ ...d, questions: d.questions.filter(q => q.id !== questionId) }))
   }, [])
 
-  const updateCampaignStatus = useCallback((campaignId: string, status: CampaignStatus) => {
+  const updateCampaignStatus = useCallback(async (campaignId: string, status: CampaignStatus) => {
     setData(d => ({
       ...d,
       campaigns: d.campaigns.map(c => {
         if (c.id === campaignId) return { ...c, status, updated_at: new Date().toISOString() }
-        // enforce single active campaign
         if (status === 'active' && c.status === 'active') return { ...c, status: 'closed' as CampaignStatus, updated_at: new Date().toISOString() }
         return c
       }),
     }))
+    await supabaseDb.updateCampaignStatusDb(campaignId, status)
+    if (status === 'active') await supabaseDb.deactivateOtherCampaigns(campaignId)
   }, [])
 
   const getDashboard = useCallback((campaignId: string): Dashboard => {
     const campaign = data.campaigns.find(c => c.id === campaignId)
-    if (!campaign) return { affectedCount: 0, unresolvedCount: 0, noCheckInCount: 0, needBreakdown: {}, rows: [] }
+    if (!campaign) return { affectedCount: 0, unresolvedCount: 0, needBreakdown: {}, rows: [] }
 
-    // dedupe by household_id — keep latest check-in per household
-    const byHousehold = new Map<string, CheckIn>()
-    for (const ci of data.checkIns) {
-      if (ci.campaign_id !== campaignId) continue
-      const existing = byHousehold.get(ci.household_id)
-      if (!existing || ci.created_at > existing.created_at) {
-        byHousehold.set(ci.household_id, ci)
-      }
-    }
+    const checkIns = data.checkIns.filter(ci => ci.campaign_id === campaignId)
+    const rows: DashboardRow[] = checkIns.map(ci => ({
+      checkIn: ci,
+      answers: data.answers.filter(a => a.check_in_id === ci.id),
+    }))
 
-    const barangayHouseholds = data.households.filter(h => h.barangay_code === campaign.barangay_code)
-    const rows: DashboardRow[] = barangayHouseholds.map(hh => {
-      const ci = byHousehold.get(hh.id) ?? null
-      const answers = ci ? data.answers.filter(a => a.check_in_id === ci.id) : []
-      return { household: hh, checkIn: ci, answers, submitted_by: ci?.submitted_by ?? null }
-    })
-
-    const affected = rows.filter(r => r.checkIn !== null)
-    const unresolved = affected.filter(r => r.checkIn!.status === 'unresolved')
-    const noCheckIn = rows.filter(r => r.checkIn === null)
-
-    // need breakdown: count yes answers by need category
+    const unresolved = rows.filter(r => r.checkIn.status === 'unresolved')
     const needBreakdown: Record<string, number> = {}
-    for (const r of affected) {
+    for (const r of rows) {
       for (const a of r.answers) {
         if (a.answer === 'yes') {
           const q = data.questions.find(q => q.id === a.question_id)
@@ -252,26 +251,26 @@ export function useHandaStore() {
     }
 
     return {
-      affectedCount: affected.length,
+      affectedCount: rows.length,
       unresolvedCount: unresolved.length,
-      noCheckInCount: noCheckIn.length,
       needBreakdown,
       rows,
     }
   }, [data])
 
-  const updateCaseStatus = useCallback((checkInId: string, status: CheckInStatus) => {
+  const updateCaseStatus = useCallback(async (checkInId: string, status: CheckInStatus) => {
     setData(d => ({
       ...d,
       checkIns: d.checkIns.map(ci => ci.id === checkInId ? { ...ci, status, updated_at: new Date().toISOString() } : ci),
     }))
+    await supabaseDb.updateCaseStatusDb(checkInId, status)
   }, [])
 
-  const submitCheckIn = useCallback((input: { campaign_id: string; household_id: string; submitted_by: string; answers: { question_id: string; answer: string }[] }) => {
+  const submitCheckIn = useCallback(async (input: { campaign_id: string; name: string; submitted_by: string; answers: { question_id: string; answer: string }[] }) => {
     const ci: CheckIn = {
       id: uid(),
       campaign_id: input.campaign_id,
-      household_id: input.household_id,
+      name: input.name,
       submitted_by: input.submitted_by,
       status: 'unresolved',
       created_at: new Date().toISOString(),
@@ -284,21 +283,14 @@ export function useHandaStore() {
       answer: a.answer,
     }))
     setData(d => ({ ...d, checkIns: [...d.checkIns, ci], answers: [...d.answers, ...ans] }))
+    await supabaseDb.insertCheckInDb(ci)
+    await supabaseDb.insertAnswersDb(ans)
     return ci
   }, [])
 
   const exportCsv = useCallback((campaignId: string): string => {
-    const campaign = data.campaigns.find(c => c.id === campaignId)
-    if (!campaign) return ''
-
-    const byHousehold = new Map<string, CheckIn>()
-    for (const ci of data.checkIns) {
-      if (ci.campaign_id !== campaignId) continue
-      const existing = byHousehold.get(ci.household_id)
-      if (!existing || ci.created_at > existing.created_at) {
-        byHousehold.set(ci.household_id, ci)
-      }
-    }
+    const checkIns = data.checkIns.filter(ci => ci.campaign_id === campaignId)
+    if (checkIns.length === 0) return ''
 
     function esc(s: string): string {
       return s.includes('"') || s.includes(',') || s.includes('\n')
@@ -306,30 +298,42 @@ export function useHandaStore() {
         : s
     }
 
-    const rows = data.households
-      .filter(h => h.barangay_code === campaign.barangay_code)
-      .map(hh => {
-        const ci = byHousehold.get(hh.id)
-        if (!ci) return null
-        const answers = data.answers.filter(a => a.check_in_id === ci.id)
-        const needs = answers
-          .filter(a => a.answer === 'yes')
-          .map(a => data.questions.find(q => q.id === a.question_id)?.need_category ?? '')
-          .filter(Boolean)
-          .join('; ')
-        return [esc(hh.household_head_name), esc(hh.address), esc(needs), ci.status, esc(ci.submitted_by), ci.created_at].join(',')
-      })
-      .filter(Boolean)
+    const rows = checkIns.map(ci => {
+      const answers = data.answers.filter(a => a.check_in_id === ci.id)
+      const needs = answers
+        .filter(a => a.answer === 'yes')
+        .map(a => data.questions.find(q => q.id === a.question_id)?.need_category ?? '')
+        .filter(Boolean)
+        .join('; ')
+      return [esc(ci.name), esc(needs), ci.status, esc(ci.submitted_by), ci.created_at].join(',')
+    })
 
-    return `Household,Address,Needs,Status,Submitted By,Created At\n${rows.join('\n')}`
+    return `Name,Needs,Status,Submitted By,Created At\n${rows.join('\n')}`
+  }, [data])
+
+  const copyQuestions = useCallback((sourceCampaignId: string, targetCampaignId: string) => {
+    const source = data.questions.filter(q => q.campaign_id === sourceCampaignId)
+    if (source.length === 0) return
+    const existingOrder = data.questions.filter(q => q.campaign_id === targetCampaignId).length
+    const copies = source.map((q, i) => ({
+      id: uid(),
+      campaign_id: targetCampaignId,
+      question_text: q.question_text,
+      need_category: q.need_category,
+      display_order: existingOrder + i,
+    }))
+    setData(d => ({ ...d, questions: [...d.questions, ...copies] }))
   }, [data])
 
   return {
     official,
     loginOfficial,
     logoutOfficial,
+    loading,
     data,
     createCampaign,
+    updateCampaign,
+    saveCampaign,
     addQuestion,
     removeQuestion,
     updateCampaignStatus,
@@ -337,5 +341,6 @@ export function useHandaStore() {
     submitCheckIn,
     getDashboard,
     exportCsv,
+    copyQuestions,
   }
 }
