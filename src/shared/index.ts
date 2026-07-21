@@ -202,18 +202,18 @@ export function useHandaStore() {
       ),
     }))
     await supabaseDb.updateCampaignDb(id, input)
-    const qs = data.questions.filter(q => q.campaign_id === id)
-    await supabaseDb.replaceQuestions(id, qs)
-  }, [data])
+  }, [])
 
   const addQuestion = useCallback((campaignId: string, question_text: string, need_category: string) => {
     const order = data.questions.filter(q => q.campaign_id === campaignId).length
     const q: CampaignQuestion = { id: uid(), campaign_id: campaignId, question_text, need_category, display_order: order }
     setData(d => ({ ...d, questions: [...d.questions, q] }))
+    supabaseDb.insertQuestion(q)
   }, [data])
 
   const removeQuestion = useCallback((questionId: string) => {
     setData(d => ({ ...d, questions: d.questions.filter(q => q.id !== questionId) }))
+    supabaseDb.deleteQuestion(questionId)
   }, [])
 
   const updateCampaignStatus = useCallback(async (campaignId: string, status: CampaignStatus) => {
@@ -323,6 +323,7 @@ export function useHandaStore() {
       display_order: existingOrder + i,
     }))
     setData(d => ({ ...d, questions: [...d.questions, ...copies] }))
+    supabaseDb.insertQuestions(copies)
   }, [data])
 
   return {

@@ -31,6 +31,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
   const [selectedRow, setSelectedRow] = useState<DashboardRow | null>(null)
   const [modalStatus, setModalStatus] = useState<CheckInStatus>('unresolved')
   const [manualEntryOpen, setManualEntryOpen] = useState(false)
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false)
   const [manualName, setManualName] = useState('')
   const [manualAnswers, setManualAnswers] = useState<Record<string, string>>({})
   const [sidebarTab, setSidebarTab] = useState<'dashboard' | 'campaigns'>(() => {
@@ -62,10 +63,20 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
   const [copyFromCampaignId, setCopyFromCampaignId] = useState('')
   const [saving, setSaving] = useState(false)
+  const [queueStatusFilter, setQueueStatusFilter] = useState<CheckInStatus | 'all'>('all')
+  const [queueNameSort, setQueueNameSort] = useState<'asc' | 'desc'>('asc')
 
   const activeCampaign = data.campaigns.find(c => c.status === 'active')
   const selectedCampaign = selectedCampaignId ? data.campaigns.find(c => c.id === selectedCampaignId) : activeCampaign
   const dashboard = selectedCampaign ? getDashboard(selectedCampaign.id) : null
+  const queueRows = dashboard
+    ? dashboard.rows
+      .filter(r => queueStatusFilter === 'all' || r.checkIn.status === queueStatusFilter)
+      .slice()
+      .sort((a, b) => queueNameSort === 'asc'
+        ? a.checkIn.name.localeCompare(b.checkIn.name)
+        : b.checkIn.name.localeCompare(a.checkIn.name))
+    : []
   const openCampaigns = data.campaigns.filter(c => c.status === 'draft' || c.status === 'closed')
   const viewableCampaigns = data.campaigns
 
@@ -209,7 +220,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
           {sidebarTab === 'dashboard' && (
             <>
               <div className="dashboard-sticky-head">
-                <div className="flex items-center gap-3 mb-5">
+                <div className="dashboard-assessment-control flex items-center gap-3 mb-5">
                   <label htmlFor="campaign-select" className="text-sm font-bold" style={{ color: '#313a4c', whiteSpace: 'nowrap' }}>Assessment:</label>
                   <select
                     id="campaign-select"
@@ -227,7 +238,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
                 {selectedCampaign && (
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div>
-                      <div className="flex items-center gap-3 mb-1">
+                      <div className="dashboard-title-row flex items-center gap-3 mb-1">
                         <h2 style={{ margin: 0, fontSize: 'clamp(22px, 4vw, 28px)', letterSpacing: '-0.04em', color: 'var(--ink)' }}>{selectedCampaign.name}</h2>
                         <span className={`status-chip ${selectedCampaign.status === 'active' ? 'open' : selectedCampaign.status === 'draft' ? '' : selectedCampaign.status === 'closed' ? 'warn' : selectedCampaign.status === 'archived' ? 'danger' : ''}`}
                           style={selectedCampaign.status === 'draft' ? { background: 'var(--soft)', color: 'var(--muted-text)' } : selectedCampaign.status === 'closed' ? { background: '#fff3cd', color: '#856404' } : undefined}>
@@ -236,7 +247,17 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
                       </div>
                       <p style={{ color: '#556075', lineHeight: 1.45, fontSize: '14px' }}>Barangay {selectedCampaign.barangay_code} — {selectedCampaign.disaster_type}, {selectedCampaign.disaster_date}</p>
                     </div>
-                    <div className="flex gap-2 flex-wrap">
+                    <button
+                      className="dashboard-actions-toggle md:hidden"
+                      type="button"
+                      onClick={() => setMobileActionsOpen(open => !open)}
+                      aria-expanded={mobileActionsOpen}
+                      aria-controls="dashboard-actions"
+                    >
+                      Actions
+                      <span aria-hidden="true">⌄</span>
+                    </button>
+                    <div id="dashboard-actions" className={`dashboard-actions flex gap-2 flex-wrap ${mobileActionsOpen ? 'open' : ''}`}>
                       {can(official.role, 'manual_entry') && selectedCampaign?.status === 'active' && (
                         <button className="pill-btn ghost text-xs sm:text-sm" onClick={() => setManualEntryOpen(true)}>Manual entry</button>
                       )}
@@ -278,7 +299,35 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
 
                       <div className="grid grid-cols-1 md:grid-cols-[1fr_0.68fr] gap-3 mb-4">
                         <div className="section-card">
-                          <h3>Check-in queue</h3>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4" style={{ borderBottom: '1px solid #edf1f8' }}>
+                            <h3 style={{ margin: 0 }}>Check-in queue</h3>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <label className="sr-only" htmlFor="queue-sort">Sort by name</label>
+                              <select
+                                id="queue-sort"
+                                value={queueNameSort}
+                                onChange={e => setQueueNameSort(e.target.value as 'asc' | 'desc')}
+                                className="min-h-[40px] rounded-2xl px-3 py-1 text-sm"
+                                style={{ border: '1px solid #cdd8ed', background: '#fff', color: 'var(--ink)' }}
+                              >
+                                <option value="asc">Name A-Z</option>
+                                <option value="desc">Name Z-A</option>
+                              </select>
+                              <label className="sr-only" htmlFor="queue-status">Filter by status</label>
+                              <select
+                                id="queue-status"
+                                value={queueStatusFilter}
+                                onChange={e => setQueueStatusFilter(e.target.value as CheckInStatus | 'all')}
+                                className="min-h-[40px] rounded-2xl px-3 py-1 text-sm"
+                                style={{ border: '1px solid #cdd8ed', background: '#fff', color: 'var(--ink)' }}
+                              >
+                                <option value="all">All statuses</option>
+                                <option value="unresolved">Unresolved</option>
+                                <option value="visited">Visited</option>
+                                <option value="resolved">Resolved</option>
+                              </select>
+                            </div>
+                          </div>
                           <div className="overflow-x-auto">
                           <table className="w-full min-w-[400px] border-collapse text-sm">
                             <thead>
@@ -289,7 +338,7 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
                               </tr>
                             </thead>
                             <tbody>
-                              {dashboard.rows.map(r => (
+                              {queueRows.map(r => (
                                 <tr
                                   key={r.checkIn.id}
                                   className={selectedCampaign?.status === 'active' ? 'cursor-pointer' : ''}
@@ -305,6 +354,11 @@ function OfficialConsole({ official, loginOfficial, logoutOfficial, loading, dat
                                   </td>
                                 </tr>
                               ))}
+                              {queueRows.length === 0 && (
+                                <tr>
+                                  <td colSpan={3} className="py-6 px-4 text-center" style={{ color: 'var(--muted-text)' }}>No check-ins match this filter.</td>
+                                </tr>
+                              )}
                             </tbody>
                           </table>
                           </div>
