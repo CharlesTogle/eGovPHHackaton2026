@@ -80,6 +80,21 @@ National surge:
 - Add RDS read replica only if database reads are the bottleneck.
 - Add Redis only if SSE fanout across instances becomes the bottleneck.
 
+No-downtime scale-out requirements:
+
+- ALB keeps routing traffic to healthy existing instances while new EC2 instances boot.
+- New instances receive traffic only after ALB health checks pass.
+- The Go API must be stateless; sessions, idempotency keys, check-ins, and audit events live in shared storage, not local instance memory.
+- Docker Compose services must start automatically from launch template/user data.
+- ASG scale-out is not instant; assume 1-5+ minutes before new instances become healthy.
+- For predictable national disaster risk, pre-scale before traffic arrives instead of waiting for alarms.
+
+Warm capacity model:
+
+- Normal operations: 2 instances.
+- Disaster watch: pre-scale to 4-6 instances.
+- Active national event: allow 8-12+ instances based on load-test results.
+
 No Kubernetes in the first production deployment. Move to ECS/EKS only when EC2 operations become harder than the platform overhead.
 
 ## Database Plan
