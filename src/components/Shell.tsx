@@ -1,14 +1,16 @@
 export type ShellProps = {
   official: { name: string; uniqid: string; role: string; barangay_code: string } | null
-  sidebarTab: 'dashboard' | 'campaigns'
-  onNavigate: (tab: 'dashboard' | 'campaigns') => void
+  sidebarTab: 'dashboard' | 'campaigns' | 'developers'
+  onNavigate: (tab: 'dashboard' | 'campaigns' | 'developers') => void
   onLogout: () => void
   children: React.ReactNode
-  role?: 'official' | 'resident'
+  role?: 'official' | 'resident' | 'developer' | 'lgu'
 }
 
 export function Shell({ official, sidebarTab, onNavigate, onLogout, children, role = 'official' }: ShellProps) {
-  const isResident = role === 'resident'
+  const isOfficial = role === 'official'
+  const isDeveloper = role === 'developer'
+  const isLgu = role === 'lgu'
   return (
     <div className="w-full" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
       <header className="glass-topbar flex items-center justify-between gap-4 py-[14px] px-4 md:px-7 min-h-[60px] border-b" style={{ background: '#fff', borderColor: 'var(--line)' }}>
@@ -16,7 +18,7 @@ export function Shell({ official, sidebarTab, onNavigate, onLogout, children, ro
           <img src="public/egovph-logo.png" alt="eGovPH" className="h-8 md:h-9 w-auto" />
           <div>
             <strong style={{ display: 'block', fontSize: '18px', color: 'var(--ink)' }}>HANDA</strong>
-            <span className="hidden md:inline" style={{ color: 'var(--muted-text)', fontSize: '14px' }}>{isResident ? 'Resident Portal' : 'Barangay Dashboard'}</span>
+            <span className="hidden md:inline" style={{ color: 'var(--muted-text)', fontSize: '14px' }}>{isDeveloper ? 'Developer Console' : isLgu ? 'LGU Dashboard' : role === 'resident' ? 'Resident Portal' : 'Barangay Dashboard'}</span>
           </div>
         </div>
         {official && (
@@ -39,11 +41,12 @@ export function Shell({ official, sidebarTab, onNavigate, onLogout, children, ro
       </header>
 
       <div className="dashboard-layout">
-        {!isResident && (
+        {(isOfficial || isLgu) && (
           <aside className="dashboard-sidebar hidden md:block">
             <div className="flex flex-col gap-1">
               <button className={`side-link ${sidebarTab === 'dashboard' ? 'active' : ''}`} onClick={() => onNavigate('dashboard')}>Dashboard</button>
-              <button className={`side-link ${sidebarTab === 'campaigns' ? 'active' : ''}`} onClick={() => onNavigate('campaigns')}>Assessments</button>
+              {isOfficial && <button className={`side-link ${sidebarTab === 'campaigns' ? 'active' : ''}`} onClick={() => onNavigate('campaigns')}>Assessments</button>}
+              <button className={`side-link ${sidebarTab === 'developers' ? 'active' : ''}`} onClick={() => onNavigate('developers')}>Developer Apps</button>
             </div>
           </aside>
         )}

@@ -3,7 +3,7 @@ import type { EgovProfile } from "./types"
 import { runSSO, type DemoIdentity } from "./egov-sso"
 import { resolveRole } from "./roles"
 
-type Role = "official" | "resident"
+type Role = "official" | "resident" | "developer" | "lgu"
 
 interface Session {
   profile: EgovProfile

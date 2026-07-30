@@ -5,6 +5,73 @@ import type { DashboardRow, CheckInStatus } from './shared'
 import { SessionProvider, useSession } from '@/features/auth/session-context'
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
 import { ResidentConsole } from '@/features/resident/ResidentConsole'
+import { DeveloperConsole } from '@/features/developer/DeveloperConsole'
+import { LguDashboard } from '@/features/lgu/LguDashboard'
+
+type DeveloperApplicationStatus = 'pending' | 'accepted' | 'rejected'
+
+type DeveloperApplication = {
+  id: string
+  applicant_name: string
+  email: string
+  organization: string
+  barangay_code: string
+  submitted_at: string
+  requested_endpoints: string[]
+  use_case: string
+  status: DeveloperApplicationStatus
+}
+
+const DEVELOPER_APPLICATIONS_STORAGE_KEY = 'handa_developer_applications'
+
+const DEFAULT_DEVELOPER_APPLICATIONS: DeveloperApplication[] = [
+  {
+    id: 'dev-app-001',
+    applicant_name: 'Alyssa Mendoza',
+    email: 'alyssa@citydata.ph',
+    organization: 'CityData PH',
+    barangay_code: '0105503021',
+    submitted_at: '2026-07-30T09:15:00Z',
+    requested_endpoints: ['/assessments', '/assessments/{id}/aggregates', '/assessments/{id}/responses'],
+    use_case: 'We want to display active HANDA assessments and relief demand metrics inside our city command center map.',
+    status: 'pending',
+  },
+  {
+    id: 'dev-app-002',
+    applicant_name: 'Marco Javier',
+    email: 'marco@rescueops.ph',
+    organization: 'RescueOps',
+    barangay_code: '0105503021',
+    submitted_at: '2026-07-29T06:45:00Z',
+    requested_endpoints: ['/barangays/{psgc}', '/assessments/{id}', '/assessments/{id}/export.csv'],
+    use_case: 'Our ops team needs daily CSV exports for coordination with field responders and barangay volunteers.',
+    status: 'pending',
+  },
+  {
+    id: 'dev-app-003',
+    applicant_name: 'Kawit Systems Team',
+    email: 'hello@kawit.systems',
+    organization: 'Kawit Systems',
+    barangay_code: '042111011',
+    submitted_at: '2026-07-28T11:00:00Z',
+    requested_endpoints: ['/assessments', '/assessments/{id}/responses'],
+    use_case: 'We are integrating HANDA into the municipal dashboard for Toclong disaster monitoring.',
+    status: 'pending',
+  },
+]
+
+function loadDeveloperApplications(): DeveloperApplication[] {
+  if (typeof window === 'undefined') return DEFAULT_DEVELOPER_APPLICATIONS
+  try {
+    const raw = window.localStorage.getItem(DEVELOPER_APPLICATIONS_STORAGE_KEY)
+    if (!raw) return DEFAULT_DEVELOPER_APPLICATIONS
+    const stored = JSON.parse(raw) as DeveloperApplication[]
+    const byId = new Map(stored.map(app => [app.id, app]))
+    return DEFAULT_DEVELOPER_APPLICATIONS.map(app => byId.get(app.id) ?? app)
+  } catch {
+    return DEFAULT_DEVELOPER_APPLICATIONS
+  }
+}
 
 function formatSubmittedBy(submittedBy: string) {
   return submittedBy.includes('(manual)') ? submittedBy : 'Self Report'
@@ -27,9 +94,10 @@ function OfficialConsole() {
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false)
   const [manualName, setManualName] = useState('')
   const [manualAnswers, setManualAnswers] = useState<Record<string, string>>({})
-  const [sidebarTab, setSidebarTab] = useState<'dashboard' | 'campaigns'>(() => {
+  const [sidebarTab, setSidebarTab] = useState<'dashboard' | 'campaigns' | 'developers'>(() => {
     const hash = window.location.hash
     if (hash === '#assessments') return 'campaigns'
+    if (hash === '#developers') return 'developers'
     if (!hash || hash === '#') {
       window.location.hash = '#dashboard'
       return 'dashboard'
@@ -37,14 +105,18 @@ function OfficialConsole() {
     return hash === '#dashboard' ? 'dashboard' : 'dashboard'
   })
 
-  const navigate = useCallback((tab: 'dashboard' | 'campaigns') => {
+  const navigate = useCallback((tab: 'dashboard' | 'campaigns' | 'developers') => {
     setSidebarTab(tab)
-    window.location.hash = tab === 'campaigns' ? '#assessments' : '#dashboard'
+    window.location.hash = tab === 'campaigns' ? '#assessments' : tab === 'developers' ? '#developers' : '#dashboard'
   }, [])
 
   useEffect(() => {
     const onHash = () => {
-      const tab = window.location.hash === '#assessments' ? 'campaigns' : 'dashboard'
+      const tab = window.location.hash === '#assessments'
+        ? 'campaigns'
+        : window.location.hash === '#developers'
+          ? 'developers'
+          : 'dashboard'
       setSidebarTab(tab)
     }
     window.addEventListener('hashchange', onHash)
@@ -58,6 +130,12 @@ function OfficialConsole() {
   const [saving, setSaving] = useState(false)
   const [queueStatusFilter, setQueueStatusFilter] = useState<CheckInStatus | 'all'>('all')
   const [queueNameSort, setQueueNameSort] = useState<'asc' | 'desc'>('asc')
+  const [developerApplications, setDeveloperApplications] = useState<DeveloperApplication[]>(loadDeveloperApplications)
+  const [selectedDeveloperApplicationId, setSelectedDeveloperApplicationId] = useState<string | null>(null)
+
+  useEffect(() => {
+    window.localStorage.setItem(DEVELOPER_APPLICATIONS_STORAGE_KEY, JSON.stringify(developerApplications))
+  }, [developerApplications])
 
   if (!session) return null
 
@@ -82,6 +160,11 @@ function OfficialConsole() {
     : []
   const openCampaigns = data.campaigns.filter(c => c.status === 'draft' || c.status === 'closed')
   const viewableCampaigns = data.campaigns
+  const visibleDeveloperApplications = developerApplications.filter(app => app.barangay_code === profile.barangay_code)
+  const pendingDeveloperApplications = visibleDeveloperApplications.filter(app => app.status === 'pending')
+  const selectedDeveloperApplication = selectedDeveloperApplicationId
+    ? developerApplications.find(app => app.id === selectedDeveloperApplicationId) ?? null
+    : null
 
   async function handleCreateCampaign(e: React.FormEvent) {
     e.preventDefault()
@@ -145,6 +228,14 @@ function OfficialConsole() {
   function showToast(msg: string) {
     setToastMsg(msg)
     setTimeout(() => setToastMsg(''), 2400)
+  }
+
+  function updateDeveloperApplicationStatus(applicationId: string, status: DeveloperApplicationStatus) {
+    setDeveloperApplications(current => current.map(application => (
+      application.id === applicationId ? { ...application, status } : application
+    )))
+    if (selectedDeveloperApplicationId === applicationId) setSelectedDeveloperApplicationId(applicationId)
+    showToast(`Developer application ${status}.`)
   }
 
   async function handleConfirmAction() {
@@ -509,6 +600,85 @@ function OfficialConsole() {
             </>
           )}
 
+          {sidebarTab === 'developers' && (
+            <>
+              <h2 style={{ margin: '0 0 4px', fontSize: 'clamp(20px, 4vw, 28px)', letterSpacing: '-0.04em' }}>Developer applications</h2>
+              <p style={{ color: '#556075', lineHeight: 1.45, fontSize: '14px' }}>Review external access requests for Barangay {profile.barangay_code} and decide whether to grant developer access.</p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 mb-4">
+                <div className="section-card p-[18px]" style={{ border: '1px solid var(--line)', background: '#fff' }}>
+                  <strong style={{ display: 'block', fontSize: 'clamp(26px, 5vw, 36px)', color: 'var(--blue-2)', letterSpacing: '-0.05em' }}>{visibleDeveloperApplications.length}</strong>
+                  <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>Applications</span>
+                </div>
+                <div className="section-card p-[18px]" style={{ border: '1px solid var(--line)', background: '#fff' }}>
+                  <strong style={{ display: 'block', fontSize: 'clamp(26px, 5vw, 36px)', color: 'var(--warn)', letterSpacing: '-0.05em' }}>{pendingDeveloperApplications.length}</strong>
+                  <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>Pending</span>
+                </div>
+                <div className="section-card p-[18px]" style={{ border: '1px solid var(--line)', background: '#fff' }}>
+                  <strong style={{ display: 'block', fontSize: 'clamp(26px, 5vw, 36px)', color: 'var(--good)', letterSpacing: '-0.05em' }}>{visibleDeveloperApplications.filter(application => application.status === 'accepted').length}</strong>
+                  <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>Accepted</span>
+                </div>
+              </div>
+
+              <div className="section-card">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4" style={{ borderBottom: '1px solid #edf1f8' }}>
+                  <div>
+                    <h3 style={{ margin: 0, padding: 0, borderBottom: 'none' }}>Application queue</h3>
+                    <p style={{ margin: '6px 0 0', color: 'var(--muted-text)', fontSize: '13px' }}>Saved in local browser storage for the demo flow.</p>
+                  </div>
+                  <span className={`status-chip ${pendingDeveloperApplications.length > 0 ? 'open' : 'good'}`}>
+                    {pendingDeveloperApplications.length} pending
+                  </span>
+                </div>
+                <div className="p-4">
+                  {visibleDeveloperApplications.length === 0 ? (
+                    <div className="empty-state-box text-center">
+                      <p style={{ color: '#556075', fontSize: '14px', margin: 0 }}>No developer applications for this barangay yet.</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {visibleDeveloperApplications.map(application => (
+                        <div key={application.id} className="rounded-[18px] p-4" style={{ border: '1px solid #edf1f8', background: '#fff' }}>
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <strong style={{ fontSize: '15px', color: 'var(--ink)' }}>{application.applicant_name}</strong>
+                                <span className={`status-chip ${application.status === 'accepted' ? 'good' : application.status === 'rejected' ? 'danger' : 'open'}`}>
+                                  {application.status}
+                                </span>
+                              </div>
+                              <p style={{ margin: '6px 0 0', color: 'var(--muted-text)', fontSize: '13px' }}>{application.organization} • {application.email}</p>
+                              <p style={{ margin: '6px 0 0', color: '#42506a', fontSize: '13px', lineHeight: 1.5 }}>{application.use_case}</p>
+                            </div>
+                            <div className="flex flex-wrap gap-2 lg:justify-end">
+                              <button className="pill-btn ghost" style={{ fontSize: '12px', padding: '8px 12px' }} onClick={() => setSelectedDeveloperApplicationId(application.id)}>Read</button>
+                              <button
+                                className="pill-btn primary"
+                                style={{ fontSize: '12px', padding: '8px 12px', opacity: application.status === 'accepted' ? 0.55 : 1 }}
+                                onClick={() => updateDeveloperApplicationStatus(application.id, 'accepted')}
+                                disabled={application.status === 'accepted'}
+                              >
+                                Accept
+                              </button>
+                              <button
+                                className="pill-btn danger"
+                                style={{ fontSize: '12px', padding: '8px 12px', opacity: application.status === 'rejected' ? 0.55 : 1 }}
+                                onClick={() => updateDeveloperApplicationStatus(application.id, 'rejected')}
+                                disabled={application.status === 'rejected'}
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
       <nav className="bottom-toolbar md:hidden">
         <button className={`toolbar-tab ${sidebarTab === 'dashboard' ? 'active' : ''}`} onClick={() => navigate('dashboard')}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -526,6 +696,15 @@ function OfficialConsole() {
             <line x1="4" y1="22" x2="4" y2="15"/>
           </svg>
           <span>Assessments</span>
+        </button>
+        <button className={`toolbar-tab ${sidebarTab === 'developers' ? 'active' : ''}`} onClick={() => navigate('developers')}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="8.5" cy="7" r="4"/>
+            <path d="M20 8v6"/>
+            <path d="M23 11h-6"/>
+          </svg>
+          <span>Developers</span>
         </button>
       </nav>
     </Shell>
@@ -671,6 +850,69 @@ function OfficialConsole() {
         </div>
       )}
 
+      {selectedDeveloperApplication && (
+        <div className="modal-overlay" onClick={() => setSelectedDeveloperApplicationId(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2>Developer application</h2>
+              <button className="pill-btn ghost" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => setSelectedDeveloperApplicationId(null)}>Close</button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <strong style={{ fontSize: '16px', color: 'var(--ink)' }}>{selectedDeveloperApplication.applicant_name}</strong>
+                  <span className={`status-chip ${selectedDeveloperApplication.status === 'accepted' ? 'good' : selectedDeveloperApplication.status === 'rejected' ? 'danger' : 'open'}`}>
+                    {selectedDeveloperApplication.status}
+                  </span>
+                </div>
+                <p style={{ margin: '6px 0 0', color: 'var(--muted-text)', fontSize: '13px' }}>{selectedDeveloperApplication.organization}</p>
+              </div>
+
+              <div className="rounded-[16px] p-4" style={{ background: '#f8faff', border: '1px solid var(--line)' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: '#42506a' }}><strong>Email:</strong> {selectedDeveloperApplication.email}</p>
+                <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#42506a' }}><strong>Barangay:</strong> {selectedDeveloperApplication.barangay_code}</p>
+                <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#42506a' }}><strong>Submitted:</strong> {new Date(selectedDeveloperApplication.submitted_at).toLocaleString()}</p>
+              </div>
+
+              <div>
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>Use case</p>
+                <p style={{ margin: '8px 0 0', fontSize: '14px', color: '#556075', lineHeight: 1.55 }}>{selectedDeveloperApplication.use_case}</p>
+              </div>
+
+              <div>
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>Requested endpoints</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {selectedDeveloperApplication.requested_endpoints.map(endpoint => (
+                    <code key={endpoint} style={{ padding: '6px 10px', borderRadius: '999px', background: '#eef2ff', color: '#42506a', fontSize: '12px', fontFamily: "'JetBrains Mono', monospace" }}>{endpoint}</code>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button
+                className="big-btn primary"
+                onClick={() => updateDeveloperApplicationStatus(selectedDeveloperApplication.id, 'accepted')}
+                disabled={selectedDeveloperApplication.status === 'accepted'}
+                style={selectedDeveloperApplication.status === 'accepted' ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
+              >
+                Accept
+              </button>
+              <button
+                className="big-btn danger"
+                onClick={() => updateDeveloperApplicationStatus(selectedDeveloperApplication.id, 'rejected')}
+                disabled={selectedDeveloperApplication.status === 'rejected'}
+                style={selectedDeveloperApplication.status === 'rejected' ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
+              >
+                Reject
+              </button>
+              <button className="big-btn ghost" onClick={() => setSelectedDeveloperApplicationId(null)}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toastMsg && (
         <div className="toast-bar left-4 right-4 md:left-auto md:right-6 md:max-w-[360px]">
           {toastMsg}
@@ -694,10 +936,18 @@ function AppRouter() {
   const { session } = useSession()
   
   if (!session) return null
-  
+
+  if (session.role === 'developer') {
+    return <DeveloperConsole />
+  }
+
+  if (session.role === 'lgu') {
+    return <LguDashboard />
+  }
+
   if (session.role === 'resident') {
     return <ResidentConsole />
   }
-  
+
   return <OfficialConsole />
 }

@@ -5,7 +5,7 @@ import { LoginPage } from "./LoginPage"
 
 interface ProtectedRouteProps {
   children: ReactNode
-  requiredRole?: "official" | "resident"
+  requiredRole?: "official" | "resident" | "lgu"
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
@@ -13,7 +13,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   useEffect(() => {
     if (isAuthed && requiredRole && session?.role !== requiredRole) {
-      const redirect = session?.role === "official" ? "#dashboard" : "#resident"
+      const redirect = session?.role === "official" ? "#dashboard" : session?.role === "lgu" ? "#lgu" : "#resident"
       if (window.location.hash !== redirect) {
         window.location.hash = redirect
       }

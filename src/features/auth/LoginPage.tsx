@@ -6,9 +6,12 @@ import type { DemoIdentity } from "./egov-sso"
 const USE_MOCK = import.meta.env.VITE_EGOV_SSO_USE_MOCK !== "false"
 
 const DEMO_IDENTITIES: { id: DemoIdentity; label: string; role: string; email: string }[] = [
-  { id: "josie", label: "Josie Dela Cruz", role: "Official", email: "josie@yopmail.com" },
+  { id: "josie", label: "Josie Dela Cruz", role: "Resident", email: "josie@yopmail.com" },
+  { id: "alexis", label: "Alexis Ramos", role: "Official", email: "alexis.ramos@yopmail.com" },
   { id: "maria", label: "Maria Santos", role: "Resident", email: "maria@yopmail.com" },
   { id: "pedro", label: "Pedro Reyes", role: "Resident", email: "pedro@yopmail.com" },
+  { id: "dev", label: "Dev User", role: "Developer", email: "dev@cityapp.ph" },
+  { id: "lgu", label: "Alaminos LGU Command", role: "LGU", email: "lgu.command@alaminos.gov.ph" },
 ]
 
 type Step = "email" | "otp" | "sso"
@@ -105,8 +108,8 @@ export function LoginPage() {
                       <span
                         className="ml-2 text-xs px-1.5 py-0.5 rounded-full"
                         style={{
-                          background: d.role === "Official" ? "var(--egov-blue)" : "var(--egov-line)",
-                          color: d.role === "Official" ? "#fff" : "var(--egov-muted)",
+                          background: d.role === "Official" || d.role === "LGU" ? "var(--egov-blue)" : "var(--egov-line)",
+                          color: d.role === "Official" || d.role === "LGU" ? "#fff" : "var(--egov-muted)",
                         }}
                       >
                         {d.role}

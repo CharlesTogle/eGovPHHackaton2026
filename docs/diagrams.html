@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HANDA System Diagrams</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131f;
+    --border: #1e1e30;
+    --text: #e4e4f0;
+    --muted: #7c7ca0;
+    --blue: #3b82f6;
+    --blue-bg: rgba(59,130,246,0.12);
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.12);
+    --amber: #f59e0b;
+    --amber-bg: rgba(245,158,11,0.12);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.12);
+    --purple: #a855f7;
+    --purple-bg: rgba(168,85,247,0.12);
+    --cyan: #06b6d4;
+    --cyan-bg: rgba(6,182,212,0.12);
+    --pink: #ec4899;
+    --pink-bg: rgba(236,72,153,0.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    padding: 48px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 80px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #fff;
+  }
+  h2 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: #d4d4e8;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    overflow-x: auto;
+  }
+
+  /* ── DIAGRAM 1: Layers ── */
+  .layers-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    align-items: center;
+    justify-content: center;
+  }
+  .layer-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 18px;
+    width: min(100%, 720px);
+    position: relative;
+    z-index: 1;
+  }
+  .layer-connector {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    justify-content: center;
+    padding: 8px 0;
+  }
+  .layer-connector svg { width: 56px; height: 64px; overflow: visible; }
+  .layer-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+  .l1 .layer-label { color: var(--cyan); }
+  .l2 .layer-label { color: var(--amber); }
+  .l3 .layer-label { color: var(--blue); }
+  .l4 .layer-label { color: var(--green); }
+  .layer-card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #fff;
+  }
+  .layer-card p { font-size: 14px; color: var(--muted); line-height: 1.5; }
+  .layer-state {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: monospace;
+  }
+  .l1 .layer-state { background: var(--cyan-bg); color: var(--cyan); }
+  .l2 .layer-state { background: var(--amber-bg); color: var(--amber); }
+  .l3 .layer-state { background: var(--blue-bg); color: var(--blue); }
+  .l4 .layer-state { background: var(--green-bg); color: var(--green); }
+  .invariant {
+    font-size: 10px !important;
+    margin-top: 8px;
+    padding: 6px 8px;
+    background: var(--red-bg);
+    color: var(--red);
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  /* ── DIAGRAM 2: Integration Model ── */
+  .integration-model {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+  }
+  .engine-box {
+    background: linear-gradient(135deg, var(--blue-bg), var(--purple-bg));
+    border: 2px solid var(--blue);
+    border-radius: 10px;
+    padding: 22px 56px;
+    text-align: center;
+  }
+  .engine-box h3 { font-size: 22px; color: #fff; }
+  .engine-box p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .branch-container {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .branch {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    width: min(100%, 520px);
+  }
+  .branch-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .branch-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+  .badge-a { background: var(--blue-bg); color: var(--blue); }
+  .badge-b { background: var(--green-bg); color: var(--green); }
+  .branch h3 { font-size: 17px; color: #fff; }
+  .branch ul {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .branch li {
+    font-size: 14px;
+    color: var(--muted);
+    display: flex;
+    gap: 8px;
+    line-height: 1.4;
+  }
+  .branch li::before { content: '▸'; color: var(--blue); flex-shrink: 0; }
+
+  /* ── DIAGRAM 3: Ecosystem ── */
+  .ecosystem {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) minmax(340px, auto) minmax(240px, 1fr);
+    gap: 24px;
+    align-items: center;
+    justify-items: center;
+  }
+  .eco-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    min-width: 220px;
+    position: relative;
+  }
+  .eco-card h4 { font-size: 15px; color: #fff; margin-bottom: 8px; }
+  .eco-card p { font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .eco-top { background: var(--blue-bg); border-color: var(--blue); }
+  .eco-left { background: var(--cyan-bg); border-color: var(--cyan); }
+  .eco-center { background: linear-gradient(135deg, var(--purple-bg), var(--blue-bg)); border: 2px solid var(--purple); padding: 52px 36px; }
+  .eco-center h3 { font-size: 24px; color: #fff; }
+  .eco-right { background: var(--amber-bg); border-color: var(--amber); }
+  .eco-bottom { background: var(--green-bg); border-color: var(--green); }
+  .eco-left-col, .eco-right-col, .eco-center-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+  }
+  .eco-arrow {
+    color: var(--muted);
+    font-size: 28px;
+    font-weight: 300;
+    transform: rotate(0deg);
+  }
+  .eco-span { grid-column: 1 / -1; }
+  .eco-caption {
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.4;
+  }
+  .flow-split svg { display: block; width: 160px; height: 72px; overflow: visible; }
+
+  /* ── DIAGRAM 4: Auth Flow ── */
+  .auth-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    align-items: center;
+  }
+  .auth-participants {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 1000px;
+    margin-bottom: 32px;
+  }
+  .auth-actor {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+  }
+  .auth-actor h4 { font-size: 14px; color: #fff; font-weight: 600; }
+  .auth-actor p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .actor-browser { border-color: var(--blue); }
+  .actor-sso { border-color: var(--purple); }
+  .actor-handa { border-color: var(--green); }
+  .actor-refresh { display: none; border-color: var(--amber); }
+  .auth-steps {
+    width: 100%;
+    max-width: 1000px;
+  }
+  .step-group {
+    border-left: 2px solid var(--border);
+    padding-left: 16px;
+    margin-bottom: 24px;
+  }
+  .step-group h4 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+  .phase-code h4 { color: var(--purple); }
+  .phase-exchange h4 { color: var(--green); }
+  .phase-cookie h4 { color: var(--blue); }
+  .phase-refresh h4 { color: var(--amber); }
+  .step {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    padding: 8px 0;
+    font-size: 14px;
+  }
+  .step-num {
+    background: var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: monospace;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-desc { color: var(--text); line-height: 1.5; }
+  .step-note { font-size: 12px; color: var(--muted); margin-left: 4px; font-style: italic; }
+  .key-insight {
+    background: var(--green-bg);
+    border: 1px solid var(--green);
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 14px;
+    color: var(--green);
+    text-align: center;
+    max-width: 1000px;
+    width: 100%;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 900px) {
+    .ecosystem { grid-template-columns: 1fr; }
+    .eco-span, .eco-caption { grid-column: 1; }
+    .auth-participants { grid-template-columns: 1fr 1fr; }
+    .branch-container { flex-direction: column; align-items: center; }
+  }
+  @media (max-width: 560px) {
+    body { padding: 28px 12px; gap: 48px; }
+    .diagram { padding: 20px; }
+    .auth-participants { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>HANDA Engine — System Diagrams v1.2.0</h1>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DIAGRAM 1: THE 4 OPERATIONAL LAYERS           -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="diagram">
+  <h2>1. The 4 Operational Layers (Barangay-Scoped)</h2>
+  <div class="layers-flow">
+
+    <!-- Layer 1 -->
+    <div class="layer-card l1">
+      <div class="layer-label">Layer 1</div>
+      <h3>Alert Ingestion</h3>
+      <p>PAGASA / NDRRMC / PHIVOLCS push CAP v1.2 alerts via webhook. 9-digit PSGC maps each alert to specific Barangay records. AI auto-drafts official assessment questions.</p>
+      <span class="layer-state">State: DRAFT</span>
+      <p class="invariant">INVARIANT: Zero citizen pushes</p>
+    </div>
+
+    <div class="layer-connector">
+      <svg viewBox="0 0 56 64">
+        <defs><marker id="arrowDown" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#7c7ca0"/></marker></defs>
+        <line x1="28" y1="0" x2="28" y2="54" stroke="#7c7ca0" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrowDown)"/>
+      </svg>
+    </div>
+
+    <!-- Layer 2 -->
+    <div class="layer-card l2">
+      <div class="layer-label">Layer 2</div>
+      <h3>LGU Control Plane</h3>
+      <p>Layer 2 is the HANDA service boundary. Barangay Portal, Developer Console APIs, and future LGU dashboards review, edit, publish, export, and monitor assessments here.</p>
+      <span class="layer-state">State: DRAFT → ACTIVE</span>
+    </div>
+
+    <div class="layer-connector">
+      <svg viewBox="0 0 56 64">
+        <defs><marker id="arrowDown2" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#7c7ca0"/></marker></defs>
+        <line x1="28" y1="0" x2="28" y2="54" stroke="#7c7ca0" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrowDown2)"/>
+      </svg>
+    </div>
+
+    <!-- Layer 3 -->
+    <div class="layer-card l3">
+      <div class="layer-label">Layer 3</div>
+      <h3>Citizen Ping</h3>
+      <p>High-priority push notifications + pop-up banners delivered inside eGovPH Super App. Targeting: Barangay PSGC + GPS geofence.</p>
+      <span class="layer-state">State: ACTIVE</span>
+    </div>
+
+    <div class="layer-connector">
+      <svg viewBox="0 0 56 64">
+        <defs><marker id="arrowDown3" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#7c7ca0"/></marker></defs>
+        <line x1="28" y1="0" x2="28" y2="54" stroke="#7c7ca0" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrowDown3)"/>
+      </svg>
+    </div>
+
+    <!-- Layer 4 -->
+    <div class="layer-card l4">
+      <div class="layer-label">Layer 4</div>
+      <h3>Citizen Pong</h3>
+      <p>30-second check-in: "Are you affected?" + needs selection. 1 response = 1 affected citizen record. Live Barangay dashboard, non-respondent list, CSV/PDF export.</p>
+      <span class="layer-state">State: VERIFIED</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DIAGRAM 2: INTEGRATION MODEL                  -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="diagram">
+  <h2>2. Dual Architectural Ecosystem</h2>
+  <div class="integration-model">
+
+    <div class="engine-box">
+      <h3>HANDA Core Engine &amp; API Gateway</h3>
+      <p>OAuth 2.0 / OIDC · CAP v1.2 Webhooks · REST APIs · SSE Live Feeds</p>
+    </div>
+
+    <div class="flow-split">
+      <svg viewBox="0 0 160 72"><defs><marker id="arrowSplit" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#7c7ca0"/></marker></defs><line x1="80" y1="0" x2="80" y2="32" stroke="#7c7ca0" stroke-width="2"/><line x1="80" y1="32" x2="24" y2="64" stroke="#7c7ca0" stroke-width="2" marker-end="url(#arrowSplit)"/><line x1="80" y1="32" x2="136" y2="64" stroke="#7c7ca0" stroke-width="2" marker-end="url(#arrowSplit)"/></svg>
+    </div>
+
+    <div class="branch-container">
+      <!-- Path A -->
+      <div class="branch" style="border-color:var(--blue)">
+        <div class="branch-header">
+          <span class="branch-badge badge-a">Path A</span>
+          <h3>Custom City App / API</h3>
+        </div>
+        <ul>
+          <li><code style="background:var(--blue-bg);color:var(--blue);padding:1px 6px;border-radius:3px;font-size:11px">developers.handa.gov.ph</code></li>
+          <li>API keys, interactive OpenAPI docs, SDKs, and webhooks</li>
+          <li>Exposes Layer 2 administrative and analytics APIs</li>
+          <li>City teams pipe HANDA dashboard data into existing apps and command centers</li>
+          <li>No direct citizen push or citizen response write access</li>
+          <li>Best for tech-enabled LGUs with their own IT team</li>
+        </ul>
+      </div>
+
+      <!-- Path B -->
+      <div class="branch" style="border-color:var(--green)">
+        <div class="branch-header">
+          <span class="branch-badge badge-b">Path B</span>
+          <h3>Turnkey Web Portal</h3>
+        </div>
+        <ul>
+          <li><code style="background:var(--green-bg);color:var(--green);padding:1px 6px;border-radius:3px;font-size:11px">barangay.handa.gov.ph</code></li>
+          <li>Zero coding required</li>
+          <li>Out-of-the-box Barangay Incident Command dashboard</li>
+          <li>Publishes assessments into HANDA/eGovPH-controlled citizen flows</li>
+          <li>Data scoped to the Barangay PSGC jurisdiction</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DIAGRAM 3: ECOSYSTEM INTEGRATION              -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="diagram">
+  <h2>3. Platform Integration Map</h2>
+  <div class="ecosystem">
+
+    <!-- Top: National Agencies -->
+    <div class="eco-top eco-card eco-span">
+      <h4>National Agencies</h4>
+      <p>PAGASA · NDRRMC · PHIVOLCS</p>
+      <p style="color:var(--blue);font-size:10px;margin-top:4px">Push CAP v1.2 alerts via webhook</p>
+    </div>
+    <div class="eco-arrow eco-span">↓</div>
+
+    <!-- Center: HANDA Engine -->
+    <div class="eco-center-wrap">
+      <div class="eco-left eco-card">
+        <h4>Developer Console</h4>
+        <p>API keys · OpenAPI docs · SDKs · Webhooks</p>
+        <p style="color:var(--muted);font-size:10px;margin-top:4px">developers.handa.gov.ph</p>
+      </div>
+    </div>
+
+    <div class="eco-center-wrap">
+      <div class="eco-center">
+        <h3>HANDA Core Engine</h3>
+        <p style="color:var(--muted);font-size:11px;margin-top:8px">Layer 2 Control Plane · AI Copilot · Barangay PSGC Scoping · Assessment Mgmt · Real-time Feeds · Data Export</p>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+          <span style="background:var(--blue-bg);color:var(--blue);padding:2px 8px;border-radius:4px;font-size:10px">REST API</span>
+          <span style="background:var(--green-bg);color:var(--green);padding:2px 8px;border-radius:4px;font-size:10px">SSE Streams</span>
+          <span style="background:var(--purple-bg);color:var(--purple);padding:2px 8px;border-radius:4px;font-size:10px">OIDC Auth</span>
+          <span style="background:var(--amber-bg);color:var(--amber);padding:2px 8px;border-radius:4px;font-size:10px">API Gateway</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="eco-center-wrap">
+      <div class="eco-right eco-card">
+        <h4>LGU Incident Command Center</h4>
+        <p>Turnkey Barangay dashboard (Path B)</p>
+        <p style="color:var(--muted);font-size:10px;margin-top:4px">barangay.handa.gov.ph</p>
+      </div>
+    </div>
+
+    <!-- Labels for sides -->
+    <div class="eco-caption">Tech-Enabled Cities<br>(integrate via API)</div>
+    <div class="eco-caption">Layer 2 exposes admin APIs; Layers 3-4 stay inside HANDA/eGovPH citizen flows</div>
+    <div class="eco-caption">Barangay Officials<br>(monitor responses)</div>
+
+    <div class="eco-arrow eco-span">↕</div>
+
+    <!-- Bottom: Citizens -->
+    <div class="eco-bottom eco-card eco-span">
+      <h4>eGovPH Super App — Citizens</h4>
+      <p>Push notifications · In-app check-in banners · 30-second response form</p>
+      <p style="color:var(--muted);font-size:10px;margin-top:4px">Targeting: registered Barangay PSGC + Barangay geofence</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DIAGRAM 4: AUTH & DATA FLOW + SECURITY        -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="diagram">
+  <h2>4. Data Flow &amp; Security — OAuth BFF Pattern</h2>
+
+  <div class="auth-participants">
+    <div class="auth-actor actor-browser">
+      <h4>Browser / SPA</h4>
+      <p>barangay.handa.gov.ph<br>or eGovPH Super App</p>
+    </div>
+    <div class="auth-actor actor-sso">
+      <h4>eGovPH SSO</h4>
+      <p>OAuth 2.0 + OIDC<br>Identity Provider</p>
+    </div>
+    <div class="auth-actor actor-handa">
+      <h4>HANDA Backend (BFF)</h4>
+      <p>REST API server<br>Token storage (server-side)</p>
+    </div>
+    <div class="auth-actor" style="border-color:var(--border);">
+      <h4>Developer Console API</h4>
+      <p>Path A custom city apps<br>server-to-server</p>
+    </div>
+  </div>
+
+  <div class="auth-flow">
+
+    <div class="auth-steps">
+
+      <!-- PHASE 1: Auth Code -->
+      <div class="step-group phase-code">
+        <h4>Phase 1 — Authorization Code Grant (Browser ↔ SSO)</h4>
+        <div class="step">
+          <span class="step-num">1</span>
+          <span class="step-desc">User clicks "Login" → Browser redirects to <strong>eGovPH SSO</strong> login page</span>
+        </div>
+        <div class="step">
+          <span class="step-num">2</span>
+          <span class="step-desc">User authenticates (password, biometrics, 2FA) with eGovPH SSO</span>
+        </div>
+        <div class="step">
+          <span class="step-num">3</span>
+          <span class="step-desc">eGovPH SSO redirects back with an <strong>Authorization Code</strong> (single-use, short-lived)</span>
+        </div>
+        <div class="step">
+          <span class="step-num">4</span>
+          <span class="step-desc">Browser forwards the Auth Code to <strong>HANDA Backend</strong> <span class="step-note">(code only — no token yet)</span></span>
+        </div>
+      </div>
+
+      <!-- PHASE 2: Token Exchange -->
+      <div class="step-group phase-exchange">
+        <h4>Phase 2 — Server-to-Server Token Exchange (HANDA ↔ SSO · zero browser involvement)</h4>
+        <div class="step">
+          <span class="step-num">5</span>
+          <span class="step-desc">HANDA Backend exchanges Auth Code for tokens via <strong>POST /token</strong> on eGovPH SSO <span class="step-note">(confidential client, server-side)</span></span>
+        </div>
+        <div class="step">
+          <span class="step-num">6</span>
+          <span class="step-desc">eGovPH SSO returns: <code style="background:var(--purple-bg);color:var(--purple);padding:1px 4px;border-radius:3px">access_token</code> (15 min) + <code style="background:var(--purple-bg);color:var(--purple);padding:1px 4px;border-radius:3px">refresh_token</code> (24h) + <code style="background:var(--purple-bg);color:var(--purple);padding:1px 4px;border-radius:3px">id_token</code> (JWT with user claims)</span>
+        </div>
+        <div class="step">
+          <span class="step-num">7</span>
+          <span class="step-desc">HANDA validates JWT signature (against eGovPH JWKS), confirms identity, stores tokens in server-side session store</span>
+        </div>
+      </div>
+
+      <!-- PHASE 3: Session Cookie -->
+      <div class="step-group phase-cookie">
+        <h4>Phase 3 — Session Establishment (Browser ↔ HANDA · httpOnly cookie)</h4>
+        <div class="step">
+          <span class="step-num">8</span>
+          <span class="step-desc">HANDA issues a <code style="background:var(--blue-bg);color:var(--blue);padding:1px 4px;border-radius:3px">session_id</code> cookie to the browser: <span style="white-space:nowrap;"><strong>HttpOnly · Secure · SameSite=Lax · Path=/</strong></span></span>
+        </div>
+        <div class="step">
+          <span class="step-num">9</span>
+          <span class="step-desc">Browser automatically sends <code style="background:var(--blue-bg);color:var(--blue);padding:1px 4px;border-radius:3px">Cookie: session_id=xyz...</code> on every subsequent HANDA API call</span>
+        </div>
+        <div class="step">
+          <span class="step-num">10</span>
+          <span class="step-desc">HANDA resolves session → fetches server-side access_token → calls external APIs on user's behalf</span>
+        </div>
+      </div>
+
+      <!-- PHASE 4: Silent Refresh -->
+      <div class="step-group phase-refresh">
+        <h4>Phase 4 — Silent Token Refresh (HANDA ↔ SSO · transparent to browser)</h4>
+        <div class="step">
+          <span class="step-num">11</span>
+          <span class="step-desc">HANDA detects access_token expiry → uses stored refresh_token to get a new one from eGovPH SSO</span>
+        </div>
+        <div class="step">
+          <span class="step-num">12</span>
+          <span class="step-desc">If refresh fails (expired/revoked) → HANDA clears session → Browser redirects to SSO login (re-auth)</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="key-insight">
+      <strong>What the browser can see in the Network tab:</strong><br>
+      Only the opaque <code>session_id</code> cookie and the initial <strong>authorization code</strong>.<br>
+      The actual <code>access_token</code>, <code>refresh_token</code>, and JWT <code>id_token</code> never touch the browser.<br>
+      XSS can steal nothing. CSRF is blocked by SameSite + origin checks.<br>
+      The browser is just a thin session client — HANDA is the real OAuth client.
+    </div>
+
+    <!-- External API Key path -->
+    <div style="width:100%;max-width:1000px;margin-top:8px;padding:16px;border:1px dashed var(--border);border-radius:8px;">
+      <h4 style="font-size:12px;color:var(--amber);margin-bottom:8px;">Path A — Developer Console API (server-to-server, no browser)</h4>
+      <div style="font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px;">
+        <div>▸ City backend gets API keys from <code style="background:var(--amber-bg);color:var(--amber);padding:1px 6px;border-radius:3px">developers.handa.gov.ph</code></div>
+        <div>▸ City backend calls Layer 2 APIs with <code style="background:var(--amber-bg);color:var(--amber);padding:1px 6px;border-radius:3px">X-HANDA-API-Key</code> header</div>
+        <div>▸ No OAuth redirect flow needed — machine-to-machine trust</div>
+        <div>▸ HANDA validates API key against LGU registry → returns PSGC-scoped dashboard data</div>
+        <div>▸ Citizen push delivery and check-in writes stay internal to HANDA/eGovPH</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- DIAGRAM 5: ROADMAP                             -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="diagram">
+  <h2>5. System Roadmap &amp; Future Expansions</h2>
+  <div class="branch-container">
+    <div class="branch" style="border-color:var(--purple)">
+      <div class="branch-header">
+        <span class="branch-badge" style="background:var(--purple-bg);color:var(--purple)">Expansion 1</span>
+        <h3>City-Wide Cascading Push</h3>
+      </div>
+      <ul>
+        <li>Parent-child multi-tenancy via <code style="background:var(--purple-bg);color:var(--purple);padding:1px 6px;border-radius:3px;font-size:11px">city.handa.gov.ph</code></li>
+        <li>City mayors and CDRRMO get parent-tenant controls</li>
+        <li>"Publish City-Wide" cascades across child barangays</li>
+        <li>Barangay-level telemetry remains separate and preserved</li>
+      </ul>
+    </div>
+
+    <div class="branch" style="border-color:var(--pink)">
+      <div class="branch-header">
+        <span class="branch-badge" style="background:var(--pink-bg);color:var(--pink)">Expansion 2</span>
+        <h3>Verification API Gateway</h3>
+      </div>
+      <ul>
+        <li>External fintechs and community apps call <code style="background:var(--pink-bg);color:var(--pink);padding:1px 6px;border-radius:3px;font-size:11px">GET /v1/verifications/citizen</code></li>
+        <li>Citizen logs into partner platform with eGovPH SSO</li>
+        <li>HANDA verifies active Layer 4 check-in status</li>
+        <li>Partners display an "eGov Verified Disaster Victim" trust badge</li>
+        <li>Anonymized beneficiary tokens preserve privacy under RA 10173</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

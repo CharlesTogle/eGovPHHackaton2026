@@ -17,4 +17,4 @@ export interface EgovProfile {
   photo: string | null
 }
 
-export type DemoIdentity = "josie" | "maria" | "pedro"
+export type DemoIdentity = "josie" | "alexis" | "maria" | "pedro" | "dev" | "lgu"

@@ -41,7 +41,7 @@ export type CheckInAnswer = {
   answer: string
 }
 
-export type OfficialRole = 'official' | 'resident'
+export type OfficialRole = 'official' | 'resident' | 'developer' | 'lgu'
 
 export type Permission =
   | 'create_campaign'
@@ -68,6 +68,8 @@ const ROLE_PERMISSIONS: Record<OfficialRole, Permission[]> = {
     'view_dashboard',
   ],
   resident: ['view_dashboard', 'respond_to_disaster'],
+  developer: ['view_dashboard'],
+  lgu: ['view_dashboard'],
 }
 
 export function can(role: OfficialRole, permission: Permission): boolean {
