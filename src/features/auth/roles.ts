@@ -8,7 +8,7 @@ export async function resolveRole(uniqid: string): Promise<"official" | "residen
 
   const { data, error } = await supabase
     .from("officials")
-    .select("uniqid")
+    .select("role")
     .eq("uniqid", uniqid)
     .maybeSingle()
 
@@ -16,5 +16,5 @@ export async function resolveRole(uniqid: string): Promise<"official" | "residen
     console.warn("Role lookup failed, defaulting to resident:", error.message)
     return "resident"
   }
-  return data ? "official" : "resident"
+  return data?.role === "official" ? "official" : "resident"
 }

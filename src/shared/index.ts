@@ -100,6 +100,10 @@ const emptyData: HandaData = {
   answers: [],
 }
 
+function formatSubmittedBy(submittedBy: string): string {
+  return submittedBy.includes('(manual)') ? submittedBy : 'Self Report'
+}
+
 function uid(): string {
   return crypto.randomUUID()
 }
@@ -113,6 +117,14 @@ export function useHandaStore() {
       if (remote) setData(remote)
       setLoading(false)
     })
+
+    const intervalId = window.setInterval(() => {
+      supabaseDb.loadAll().then(remote => {
+        if (remote) setData(remote)
+      })
+    }, 5000)
+
+    return () => window.clearInterval(intervalId)
   }, [])
 
   const createCampaign = useCallback(async (input: { name: string; disaster_type: string; disaster_date: string; created_by: string; barangay_code: string }) => {
@@ -243,7 +255,7 @@ export function useHandaStore() {
         .map(a => data.questions.find(q => q.id === a.question_id)?.need_category ?? '')
         .filter(Boolean)
         .join('; ')
-      return [esc(ci.name), esc(needs), ci.status, esc(ci.submitted_by), ci.created_at].join(',')
+      return [esc(ci.name), esc(needs), ci.status, esc(formatSubmittedBy(ci.submitted_by)), ci.created_at].join(',')
     })
 
     return `Name,Needs,Status,Submitted By,Created At\n${rows.join('\n')}`

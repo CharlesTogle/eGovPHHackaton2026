@@ -29,7 +29,12 @@ export function LoginPage() {
         setOtpError("Please enter an email address")
         return
       }
-      await requestOTP(targetEmail)
+      const { already_verified } = await requestOTP(targetEmail)
+      if (already_verified) {
+        setStep("sso")
+        await login(USE_MOCK ? selected : undefined)
+        return
+      }
       setStep("otp")
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : "Failed to send OTP")

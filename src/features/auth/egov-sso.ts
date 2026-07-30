@@ -3,9 +3,14 @@ import type { DemoIdentity, EgovProfile } from "./types"
 export type { DemoIdentity }
 
 const BASE_URL = import.meta.env.VITE_EGOV_SSO_BASE_URL as string | undefined
+const EXCHANGE_CODE_PATH = import.meta.env.VITE_EGOV_SSO_EXCHANGE_CODE_PATH as string | undefined
 const PARTNER_CODE = import.meta.env.VITE_EGOV_SSO_PARTNER_CODE as string | undefined
 const PARTNER_SECRET = import.meta.env.VITE_EGOV_SSO_PARTNER_SECRET as string | undefined
 const USE_MOCK = import.meta.env.VITE_EGOV_SSO_USE_MOCK !== "false"
+
+type ExchangeCodeResponse = { exchange_code?: string; data?: { exchange_code?: string } }
+type AccessTokenResponse = { access_token?: string; data?: { access_token?: string } }
+type SSOAuthenticationResponse = { data?: EgovProfile }
 
 const MOCK_PROFILES: Record<DemoIdentity, EgovProfile> = {
   josie: {
@@ -66,14 +71,31 @@ const MOCK_PROFILES: Record<DemoIdentity, EgovProfile> = {
 
 async function generateExchangeCode(): Promise<string> {
   if (!BASE_URL || !PARTNER_CODE) throw new Error("SSO base URL or partner code not configured")
-  const res = await fetch(`${BASE_URL}/api/exchange-code`, {
+
+  const endpoint = new URL(EXCHANGE_CODE_PATH ?? "/api/exchange-code", BASE_URL)
+  endpoint.searchParams.set("partner_code", PARTNER_CODE)
+
+  const getRes = await fetch(endpoint, { method: "GET" })
+  if (getRes.ok) {
+    const data = await getRes.json() as ExchangeCodeResponse
+    const exchangeCode = data.exchange_code ?? data.data?.exchange_code
+    if (exchangeCode) return exchangeCode
+    throw new Error("Exchange code missing from response")
+  }
+
+  const postRes = await fetch(new URL(EXCHANGE_CODE_PATH ?? "/api/exchange-code", BASE_URL), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ partner_code: PARTNER_CODE }),
   })
-  if (!res.ok) throw new Error(`Exchange code failed: ${res.status}`)
-  const data = await res.json() as { exchange_code: string }
-  return data.exchange_code
+  if (!postRes.ok) {
+    throw new Error(`Exchange code failed: GET ${getRes.status}, POST ${postRes.status}`)
+  }
+
+  const postData = await postRes.json() as ExchangeCodeResponse
+  const exchangeCode = postData.exchange_code ?? postData.data?.exchange_code
+  if (!exchangeCode) throw new Error("Exchange code missing from response")
+  return exchangeCode
 }
 
 async function generateAccessToken(exchangeCode: string): Promise<string> {
@@ -89,8 +111,10 @@ async function generateAccessToken(exchangeCode: string): Promise<string> {
     }),
   })
   if (!res.ok) throw new Error(`Token exchange failed: ${res.status}`)
-  const data = await res.json() as { access_token: string }
-  return data.access_token
+  const data = await res.json() as AccessTokenResponse
+  const accessToken = data.access_token ?? data.data?.access_token
+  if (!accessToken) throw new Error("Access token missing from response")
+  return accessToken
 }
 
 async function ssoAuthentication(accessToken: string): Promise<EgovProfile> {
@@ -103,7 +127,8 @@ async function ssoAuthentication(accessToken: string): Promise<EgovProfile> {
     },
   })
   if (!res.ok) throw new Error(`SSO authentication failed: ${res.status}`)
-  const json = await res.json() as { data: EgovProfile }
+  const json = await res.json() as SSOAuthenticationResponse
+  if (!json.data) throw new Error("SSO profile missing from response")
   return json.data
 }
 

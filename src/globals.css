@@ -93,6 +93,14 @@
   --sidebar-accent-foreground: var(--blue-2);
   --sidebar-border: var(--line);
   --sidebar-ring: var(--blue);
+
+  --egov-blue: var(--blue);
+  --egov-soft: var(--soft);
+  --egov-radius: var(--radius);
+  --egov-ink: var(--ink);
+  --egov-muted: var(--muted-text);
+  --egov-line: var(--line);
+  --egov-red: var(--red);
 }
 
 .dark {
