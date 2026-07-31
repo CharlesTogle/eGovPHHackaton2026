@@ -7,7 +7,7 @@ The repo is still the **Vite boilerplate** — no application flow implemented:
 - `src/App.tsx` is the default "Get started / Count is N" template.
 - `src/shared/index.ts` and `src/features/index.ts` are **empty files**. No modules (CampaignService, CheckInFlow, HouseholdMatcher, DashboardAggregator, StatusTracker, ExportService) have been built.
 - No `@supabase/supabase-js` in `package.json`, no auth/provider/router code, no eGovPH SSO client, no React context for the eGovPH profile.
-- `.env.example` has the SSO vars (`VITE_EGOV_SSO_PARTNER_CODE/_SECRET`) but no auth code references them.
+- `.env.example` now keeps eGov secrets as Supabase Edge Function secrets; auth code no longer reads partner credentials from the client.
 
 The stack story (frontend → eGovPH SSO directly → Supabase directly) is **only described in the PRD, never wired up**.
 
