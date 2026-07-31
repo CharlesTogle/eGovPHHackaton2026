@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import * as supabaseDb from './supabase'
 import type { Alert } from '@/features/alerts/types'
+import { mergeHistoricalDemoData } from '@/features/demo/historical-demo-data'
 
 export type CampaignStatus = 'draft' | 'active' | 'closed' | 'archived'
 export type CheckInStatus = 'unresolved' | 'visited' | 'resolved'
@@ -79,14 +80,6 @@ export function can(role: OfficialRole, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false
 }
 
-export function formatAnonymizedIdentity(name: string, checkInId: string) {
-  const [first = 'Resident', ...rest] = name.trim().split(/\s+/)
-  const last = rest.at(-1) ?? 'Citizen'
-  const maskedName = `${first.charAt(0)}*** ${last.charAt(0)}***`
-  const residentKey = checkInId.slice(0, 8).toUpperCase()
-  return { maskedName, residentKey }
-}
-
 export type DashboardRow = {
   checkIn: CheckIn
   answers: CheckInAnswer[]
@@ -117,6 +110,20 @@ const emptyData: HandaData = {
   alerts: [],
 }
 
+export function formatAnonymizedIdentity(fullName: string, checkInId: string): { maskedName: string; residentKey: string } {
+  if (!fullName) return { maskedName: 'R*** R***', residentKey: 'RES-0105-0000' }
+  const parts = fullName.trim().split(/\s+/)
+  const maskedParts = parts.map(part => {
+    if (part.length <= 1) return part.toUpperCase()
+    return part[0].toUpperCase() + '***'
+  })
+  const maskedName = maskedParts.join(' ')
+  const cleanId = checkInId.replace(/[^a-fA-F0-9]/g, '')
+  const keySnippet = (cleanId.slice(-4) || '8D4F').toUpperCase()
+  const residentKey = `RES-0105-${keySnippet}`
+  return { maskedName, residentKey }
+}
+
 function formatSubmittedBy(submittedBy: string): string {
   return submittedBy.includes('(manual)') ? submittedBy : 'Self Report'
 }
@@ -131,13 +138,71 @@ export function useHandaStore() {
 
   useEffect(() => {
     supabaseDb.loadAll().then(remote => {
-      if (remote) setData(remote)
+      const hydrated = mergeHistoricalDemoData(remote)
+      if (hydrated) {
+        setData(prev => {
+          const mergedCampaigns = [...hydrated.campaigns]
+          for (const c of prev.campaigns) {
+            if (!mergedCampaigns.some(rc => rc.id === c.id)) {
+              mergedCampaigns.push(c)
+            }
+          }
+          const mergedQuestions = [...hydrated.questions]
+          for (const q of prev.questions) {
+            if (!mergedQuestions.some(rq => rq.id === q.id)) {
+              mergedQuestions.push(q)
+            }
+          }
+          const mergedAlerts = [...hydrated.alerts]
+          for (const a of prev.alerts) {
+            if (!mergedAlerts.some(ra => ra.id === a.id)) {
+              mergedAlerts.push(a)
+            }
+          }
+          return {
+            campaigns: mergedCampaigns,
+            questions: mergedQuestions,
+            checkIns: hydrated.checkIns.length > 0 ? hydrated.checkIns : prev.checkIns,
+            answers: hydrated.answers.length > 0 ? hydrated.answers : prev.answers,
+            alerts: mergedAlerts,
+          }
+        })
+      }
       setLoading(false)
     })
 
     const intervalId = window.setInterval(() => {
       supabaseDb.loadAll().then(remote => {
-        if (remote) setData(remote)
+        const hydrated = mergeHistoricalDemoData(remote)
+        if (hydrated) {
+          setData(prev => {
+            const mergedCampaigns = [...hydrated.campaigns]
+            for (const c of prev.campaigns) {
+              if (!mergedCampaigns.some(rc => rc.id === c.id)) {
+                mergedCampaigns.push(c)
+              }
+            }
+            const mergedQuestions = [...hydrated.questions]
+            for (const q of prev.questions) {
+              if (!mergedQuestions.some(rq => rq.id === q.id)) {
+                mergedQuestions.push(q)
+              }
+            }
+            const mergedAlerts = [...hydrated.alerts]
+            for (const a of prev.alerts) {
+              if (!mergedAlerts.some(ra => ra.id === a.id)) {
+                mergedAlerts.push(a)
+              }
+            }
+            return {
+              campaigns: mergedCampaigns,
+              questions: mergedQuestions,
+              checkIns: hydrated.checkIns.length > 0 ? hydrated.checkIns : prev.checkIns,
+              answers: hydrated.answers.length > 0 ? hydrated.answers : prev.answers,
+              alerts: mergedAlerts,
+            }
+          })
+        }
       })
     }, 5000)
 
@@ -275,17 +340,19 @@ export function useHandaStore() {
         : s
     }
 
+    const header = ['Resident_Key', 'Anonymized_Name', 'Reported_Needs', 'Status', 'Submitted_By', 'Timestamp'].join(',')
     const rows = checkIns.map(ci => {
+      const { maskedName, residentKey } = formatAnonymizedIdentity(ci.name, ci.id)
       const answers = data.answers.filter(a => a.check_in_id === ci.id)
       const needs = answers
         .filter(a => a.answer === 'yes')
         .map(a => data.questions.find(q => q.id === a.question_id)?.need_category ?? '')
         .filter(Boolean)
         .join('; ')
-      return [esc(ci.name), esc(needs), ci.status, esc(formatSubmittedBy(ci.submitted_by)), ci.created_at].join(',')
+      return [esc(residentKey), esc(maskedName), esc(needs), ci.status, esc(formatSubmittedBy(ci.submitted_by)), ci.created_at].join(',')
     })
 
-    return `Name,Needs,Status,Submitted By,Created At\n${rows.join('\n')}`
+    return [header, ...rows].join('\n')
   }, [data])
 
   const copyQuestions = useCallback((sourceCampaignId: string, targetCampaignId: string) => {

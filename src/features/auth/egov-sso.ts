@@ -121,6 +121,12 @@ function requireSupabase() {
   return supabase
 }
 
+function getExchangeCodeFromUrl(): string | null {
+  if (typeof window === "undefined") return null
+  const params = new URLSearchParams(window.location.search)
+  return params.get("exchange_code")
+}
+
 export async function runSSO(identity?: DemoIdentity): Promise<EgovProfile> {
   if (USE_MOCK) {
     await new Promise((r) => setTimeout(r, 600))
@@ -130,8 +136,12 @@ export async function runSSO(identity?: DemoIdentity): Promise<EgovProfile> {
     console.log("[SSO MOCK] access_token:", mockAccessToken)
     return MOCK_PROFILES[identity ?? "josie"]
   }
+  const exchangeCode = getExchangeCodeFromUrl()
   const { data, error } = await requireSupabase().functions.invoke("egov", {
-    body: { action: "sso-profile" },
+    body: {
+      action: "sso-profile",
+      payload: exchangeCode ? { exchange_code: exchangeCode } : {},
+    },
   })
   if (error) throw error
   return data as EgovProfile

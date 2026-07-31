@@ -62,6 +62,12 @@ export async function deleteQuestion(id: string) {
   if (error) console.error('deleteQuestion:', error)
 }
 
+export async function updateQuestionDb(id: string, fields: { question_text: string; need_category: string }) {
+  if (!db()) return
+  const { error } = await table('campaign_questions').update(fields).eq('id', id)
+  if (error) console.error('updateQuestionDb:', error)
+}
+
 export async function insertQuestions(qs: CampaignQuestion[]) {
   if (!db()) return
   const { error } = await table('campaign_questions').insert(qs)
@@ -102,12 +108,6 @@ export async function insertAnswersDb(answers: CheckInAnswer[]) {
   if (!db()) return
   const { error } = await table('check_in_answers').insert(answers)
   if (error) console.error('insertAnswersDb:', error)
-}
-
-export async function updateQuestionDb(id: string, fields: { question_text: string; need_category: string }) {
-  if (!db()) return
-  const { error } = await table('campaign_questions').update(fields).eq('id', id)
-  if (error) console.error('updateQuestionDb:', error)
 }
 
 export async function insertAlert(alert: Alert) {

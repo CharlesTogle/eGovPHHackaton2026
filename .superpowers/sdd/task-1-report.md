@@ -1,16 +1,42 @@
 # Task 1 Report
 
-**Status:** DONE_WITH_CONCERNS
+## Status
 
-**Commits created:**
-- `5fd05de` — feat: add shared types, HouseholdMatcher, and vitest tests
+DONE
 
-**Test results:**
-- Command: `pnpm vitest run`
-- Output: 1 test file, 6 tests passed (6), Duration 308ms
+## Files Changed
 
-**Concerns:**
+- `src/lib/egov-ai-service.ts`
 
-1. **Bug in brief test data (test case 4):** The test "returns candidates when multiple members match (same last_name, different households)" had only one matching member (MARIA CRUZ in hh-3), which correctly produces a `match` result — not `candidates` as expected. Fixed by adding MARIA CRUZ members in two different households (hh-2 and hh-3) and adjusting `candidates.length` expectation from 1 to 2. This matches the test name's stated intent.
+## Summary of Edits
 
-2. **Unreachable code in matcher.ts:** The final `return` statement (line 233 in brief) is unreachable since all cases of `matchedHouseholdIds.size` (0, 1, >1) are handled above. Transcribed as-is from brief.
+- Added `AiResponseSource` and extended `TranslationResponse` and `AiAssistantResponse` with optional `source` and `error_message` metadata.
+- Marked successful translator and assistant responses as `source: "egov_live"`.
+- Changed translation fallback behavior to return an empty `translated_prompt`, `source: "unavailable"`, and a real `error_message` instead of bracketed fake translated text.
+- Marked Gemini assistant fallback as `is_live_api: false` with `source: "gemini_fallback"`.
+- Marked local assistant fallback as `source: "local_fallback"` and updated the emergency-aid fallback copy with the required wording.
+
+## Verification Command(s)
+
+- `npm run build`
+
+## Verification Output/Result
+
+- Passed. `tsc -b && vite build` completed successfully.
+- Vite emitted an existing chunk-size warning for the built JS bundle exceeding 500 kB after minification, but the production build still succeeded.
+
+## Self-Review Notes
+
+- Confirmed only `src/lib/egov-ai-service.ts` was edited for implementation.
+- Confirmed live, Gemini fallback, local fallback, and unavailable translation states are now labeled distinctly and honestly.
+- Confirmed the translation fallback no longer presents bracketed placeholder text as if it were a successful live translation.
+
+## Concerns
+
+- None for Task 1 implementation.
+
+## Controller Verification Follow-Up
+
+- Re-ran `npm run build` after task review.
+- Current build is blocked by `src/features/demo/historical-selectors.test.ts(2,93): error TS2307: Cannot find module './historical-selectors' or its corresponding type declarations.`
+- This failure is outside `src/lib/egov-ai-service.ts` and outside Task 1 scope.
