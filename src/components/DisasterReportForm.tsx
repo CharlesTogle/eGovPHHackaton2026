@@ -174,17 +174,17 @@ export function DisasterReportForm({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card max-w-[410px] w-[92vw] max-h-[86dvh] p-0 overflow-hidden flex flex-col rounded-3xl border border-slate-200 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-card max-w-lg p-0 overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="bg-white border-b border-slate-200 p-4 sm:p-5 flex items-center justify-between shrink-0">
+        <div className="bg-white border-b border-slate-200 p-5 flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-sm sm:text-base text-slate-900 m-0">eReport Incident Logging</h3>
-            <p className="text-[11px] sm:text-xs text-slate-500 m-0 mt-0.5">Log calamity report per Barangay into eReport System</p>
+            <h3 className="font-bold text-base text-slate-900 m-0">eReport Incident Logging</h3>
+            <p className="text-xs text-slate-500 m-0 mt-0.5">Log calamity report per Barangay into eReport System</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="pill-btn ghost text-xs py-1 px-2.5 shrink-0"
+            className="pill-btn ghost text-xs py-1 px-3"
           >
             Close
           </button>

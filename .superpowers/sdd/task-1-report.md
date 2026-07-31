@@ -1,37 +1,42 @@
 # Task 1 Report
 
-**Status:** DONE_WITH_CONCERNS
+## Status
 
-**Scope completed:**
-- Added `src/features/demo/historical-incidents.ts` from `.worktrees/edge-functions-sync`
-- Added `src/features/demo/historical-selectors.ts` from `.worktrees/edge-functions-sync`
-- Added `src/features/demo/historical-selectors.test.ts` from `.worktrees/edge-functions-sync`
-- Preserved campaign ID alignment with existing `src/features/demo/historical-demo-data.ts`
+DONE
 
-**TDD evidence:**
-1. Added the focused selector test file first.
-2. Ran `npm run test:unit -- src/features/demo/historical-selectors.test.ts` and confirmed the expected red state: missing `./historical-selectors`.
-3. Copied the historical selector implementation from the worktree source of truth.
-4. Hit a compile blocker because `src/lib/psa-fallback-data.ts` was missing on `master` while both the copied selector test and worktree source depended on it.
-5. Added `src/lib/psa-fallback-data.ts` from the same worktree so the focused selector test could compile and execute.
-6. Re-ran the focused unit test and confirmed it passed.
+## Files Changed
 
-**Files changed for the task:**
-- `src/features/demo/historical-incidents.ts`
-- `src/features/demo/historical-selectors.ts`
-- `src/features/demo/historical-selectors.test.ts`
-- `src/lib/psa-fallback-data.ts`
+- `src/lib/egov-ai-service.ts`
 
-**Verification:**
-- `npm run test:unit -- src/features/demo/historical-selectors.test.ts`
-  - Result: PASS, 2 test files passed / 16 tests passed
-  - Note: Vitest also executed the mirrored `.worktrees/edge-functions-sync/.../historical-selectors.test.ts` file because the CLI argument matched both locations.
-- `npx tsc --noEmit`
-  - Result: PASS
+## Summary of Edits
 
-**Commit created:**
-- `db311b4` — `feat: sync historical demo selectors`
+- Added `AiResponseSource` and extended `TranslationResponse` and `AiAssistantResponse` with optional `source` and `error_message` metadata.
+- Marked successful translator and assistant responses as `source: "egov_live"`.
+- Changed translation fallback behavior to return an empty `translated_prompt`, `source: "unavailable"`, and a real `error_message` instead of bracketed fake translated text.
+- Marked Gemini assistant fallback as `is_live_api: false` with `source: "gemini_fallback"`.
+- Marked local assistant fallback as `source: "local_fallback"` and updated the emergency-aid fallback copy with the required wording.
 
-**Concerns:**
-1. The task brief named only the three `historical-*` files, but `src/lib/psa-fallback-data.ts` also had to be synced to make the copied selector test compile on `master`.
-2. The focused Vitest command currently matches both the `master` test file and the mirrored worktree test file under `.worktrees/edge-functions-sync`, so the command reports two passing suites instead of one.
+## Verification Command(s)
+
+- `npm run build`
+
+## Verification Output/Result
+
+- Passed. `tsc -b && vite build` completed successfully.
+- Vite emitted an existing chunk-size warning for the built JS bundle exceeding 500 kB after minification, but the production build still succeeded.
+
+## Self-Review Notes
+
+- Confirmed only `src/lib/egov-ai-service.ts` was edited for implementation.
+- Confirmed live, Gemini fallback, local fallback, and unavailable translation states are now labeled distinctly and honestly.
+- Confirmed the translation fallback no longer presents bracketed placeholder text as if it were a successful live translation.
+
+## Concerns
+
+- None for Task 1 implementation.
+
+## Controller Verification Follow-Up
+
+- Re-ran `npm run build` after task review.
+- Current build is blocked by `src/features/demo/historical-selectors.test.ts(2,93): error TS2307: Cannot find module './historical-selectors' or its corresponding type declarations.`
+- This failure is outside `src/lib/egov-ai-service.ts` and outside Task 1 scope.

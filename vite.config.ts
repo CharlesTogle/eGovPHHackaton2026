@@ -13,11 +13,6 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/api/egov-ai": {
-        target: "https://egov-ai-core-ws.oueg.info",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/egov-ai/, "/api/v1/egov/integration"),
-      },
       "/api/ereport": {
         target: "https://stg-ereport-ws.oueg.info",
         changeOrigin: true,

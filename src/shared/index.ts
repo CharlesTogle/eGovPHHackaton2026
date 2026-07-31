@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import * as supabaseDb from './supabase'
 import type { Alert } from '@/features/alerts/types'
+import { mergeHistoricalDemoData } from '@/features/demo/historical-demo-data'
 
 export type CampaignStatus = 'draft' | 'active' | 'closed' | 'archived'
 export type CheckInStatus = 'unresolved' | 'visited' | 'resolved'
@@ -139,13 +140,71 @@ export function useHandaStore() {
 
   useEffect(() => {
     supabaseDb.loadAll().then(remote => {
-      setData(mergeHistoricalDemoData(remote))
+      const hydrated = mergeHistoricalDemoData(remote)
+      if (hydrated) {
+        setData(prev => {
+          const mergedCampaigns = [...hydrated.campaigns]
+          for (const c of prev.campaigns) {
+            if (!mergedCampaigns.some(rc => rc.id === c.id)) {
+              mergedCampaigns.push(c)
+            }
+          }
+          const mergedQuestions = [...hydrated.questions]
+          for (const q of prev.questions) {
+            if (!mergedQuestions.some(rq => rq.id === q.id)) {
+              mergedQuestions.push(q)
+            }
+          }
+          const mergedAlerts = [...hydrated.alerts]
+          for (const a of prev.alerts) {
+            if (!mergedAlerts.some(ra => ra.id === a.id)) {
+              mergedAlerts.push(a)
+            }
+          }
+          return {
+            campaigns: mergedCampaigns,
+            questions: mergedQuestions,
+            checkIns: hydrated.checkIns.length > 0 ? hydrated.checkIns : prev.checkIns,
+            answers: hydrated.answers.length > 0 ? hydrated.answers : prev.answers,
+            alerts: mergedAlerts,
+          }
+        })
+      }
       setLoading(false)
     })
 
     const intervalId = window.setInterval(() => {
       supabaseDb.loadAll().then(remote => {
-        setData(mergeHistoricalDemoData(remote))
+        const hydrated = mergeHistoricalDemoData(remote)
+        if (hydrated) {
+          setData(prev => {
+            const mergedCampaigns = [...hydrated.campaigns]
+            for (const c of prev.campaigns) {
+              if (!mergedCampaigns.some(rc => rc.id === c.id)) {
+                mergedCampaigns.push(c)
+              }
+            }
+            const mergedQuestions = [...hydrated.questions]
+            for (const q of prev.questions) {
+              if (!mergedQuestions.some(rq => rq.id === q.id)) {
+                mergedQuestions.push(q)
+              }
+            }
+            const mergedAlerts = [...hydrated.alerts]
+            for (const a of prev.alerts) {
+              if (!mergedAlerts.some(ra => ra.id === a.id)) {
+                mergedAlerts.push(a)
+              }
+            }
+            return {
+              campaigns: mergedCampaigns,
+              questions: mergedQuestions,
+              checkIns: hydrated.checkIns.length > 0 ? hydrated.checkIns : prev.checkIns,
+              answers: hydrated.answers.length > 0 ? hydrated.answers : prev.answers,
+              alerts: mergedAlerts,
+            }
+          })
+        }
       })
     }, 5000)
 

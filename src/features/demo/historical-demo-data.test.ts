@@ -25,7 +25,7 @@ describe('historical demo data fallback', () => {
       alerts: [{ id: 'alert-1' }],
     } as never)
 
-    expect(merged.campaigns.map(campaign => campaign.id)).toEqual([
+    expect(merged.campaigns.map((campaign) => campaign.id)).toEqual([
       'a0000000-0000-0000-0000-000000000001',
       'a1000000-0000-0000-0000-000000000001',
       'a1000000-0000-0000-0000-000000000002',

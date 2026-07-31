@@ -1,82 +1,50 @@
-# Task 2 Report: Sync `master` Consumers to the Shared Historical Demo Flow
+Status: DONE
 
-- **Status:** DONE_WITH_CONCERNS
-- **Scope:** Sync `master` consumer surfaces to the shared historical selector and metadata flow used by `.worktrees/edge-functions-sync`, without fixing unrelated pre-existing `master` failures.
+Files changed:
+- src/components/TranslateWidget.tsx
+- src/components/CitizenHelpChat.tsx
 
-## What Changed
+Summary of edits:
+- Updated `TranslateWidget` to track an explicit resident-facing status label from `res.source` and to show `Live eGov AI`, `Fallback`, or `Unavailable` honestly.
+- Prevented unavailable translation responses from rendering as successful translated text by clearing `translatedText` when `source === "unavailable"`.
+- Replaced the previous generic error rendering with the explicit unavailable-state message from the task brief.
+- Updated `CitizenHelpChat` to track `lastSource` from `askAiAssistant()` and use it for the header status badge so fallback responses are not labeled as live eGov AI.
+- Added the three HANDA-specific prompt chips that prefill the chat input.
+- Updated per-message AI source labels to match `source` values instead of only `is_live_api`.
 
-- `src/features/lgu/LguDashboard.tsx`
-  - Replaced the local hard-coded `INCIDENTS` dashboard source with shared selector-driven rows from `buildLguIncidentRows({ campaigns, getDashboard })`.
-  - Added `summarizeNeededSupplies(incidentRows)` so the LGU dashboard now renders the same historical supply rollups as the worktree source of truth.
-  - Updated dashboard cards and the incident table to use historical metadata fields (`locationLabel`, `historicalAffectedPeople`, `assessmentCheckIns`, `ereportReportType`, shared status values).
-  - Added the shared supply summary block and loading copy from the worktree flow.
+Verification command(s):
+- `npm run build`
 
-- `src/features/official/OfficialConsole.tsx`
-  - Added shared selector import for `getHistoricalIncidentMeta`.
-  - Derived `selectedCampaignMeta` from the selected campaign ID.
-  - Updated the selected assessment header to render historical location and affected-population metadata when the selected campaign is part of the curated historical set.
-  - Added the historical metadata KPI cards and the priority supply tracking block used by the worktree dashboard flow.
+Verification output/result:
+- Result: PASS
+- Output:
+```text
+> egov-hackaton@0.0.0 build
+> tsc -b && vite build
 
-- `src/features/resident/ResidentConsole.tsx`
-  - No code change required.
-  - `master` already matched the worktree historical eReport selector usage: `getCampaignEReportDefaults(activeCampaign.id)`.
+vite v8.1.5 building client environment for production...
+transforming...✓ 89 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.74 kB │ gzip:   0.43 kB
+dist/assets/index-DAgDGE8V.css   49.67 kB │ gzip:  10.14 kB
+dist/assets/index-BHEZIZrM.js   593.83 kB │ gzip: 158.61 kB
 
-- `src/features/demo/historical-demo-data.test.ts`
-  - Added the missing historical-flow unit test file that exists in the worktree source of truth.
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
 
-## Historical Flow File Sync Check
+✓ built in 317ms
+```
 
-- Present on `master` before task and still aligned with worktree:
-  - `src/features/demo/historical-demo-data.ts`
-  - `src/features/demo/historical-incidents.ts`
-  - `src/features/demo/historical-selectors.ts`
-  - `src/features/demo/historical-selectors.test.ts`
-- Added from worktree during this task:
-  - `src/features/demo/historical-demo-data.test.ts`
+Self-review notes:
+- Kept changes frontend-only and limited to the two requested components.
+- Did not edit `src/App.tsx`.
+- Ensured unavailable translation responses no longer show fake bracketed or fallback text as a successful translation.
+- Ensured Gemini/local fallback chat responses do not display as live eGov AI.
+- Matched the task brief labels and prompt chip copy verbatim.
 
-## Verification
-
-### Red Step
-
-- Ran `npm run build` before edits.
-- Result: **FAIL**, but due to pre-existing unrelated `master` issues, not the historical selector consumer sync.
-
-Pre-existing build failures observed before the sync:
-
-- `src/features/official/OfficialConsole.tsx`
-  - missing `formatAnonymizedIdentity` export from `@/shared`
-  - missing `@/features/alerts`
-  - `updateQuestion` missing from store shape
-- `src/features/resident/ResidentConsole.tsx`
-  - missing `@/components/DisasterReportForm`
-- `src/shared/index.ts`
-  - missing `@/features/alerts/types`
-- `src/shared/supabase.ts`
-  - missing `@/features/alerts/types`
-
-### Focused Tests After Sync
-
-- Ran `npm run test:unit -- src/features/demo/historical-selectors.test.ts src/features/demo/historical-demo-data.test.ts`
-- Result: **PASS**
-- Output summary:
-  - 4 test files passed
-  - 22 tests passed
-
-Note: Vitest also picked up the equivalent worktree test files under `.worktrees/edge-functions-sync`, so the run included both `master` and worktree copies.
-
-### Full Build After Sync
-
-- Ran `npm run build` after edits.
-- Result: **FAIL**
-- Outcome relative to task scope:
-  - No new historical selector consumer errors were introduced by this task.
-  - The build remains blocked by the same unrelated pre-existing `master` issues listed above.
-
-## Commit
-
-- Created commit: `feat: sync historical demo consumers`
-
-## Concerns
-
-- The project-wide build could not be made green within this task because `master` still has unrelated missing-module and store-shape errors outside the historical consumer sync scope.
-- `ResidentConsole` was already synced to `getCampaignEReportDefaults`, so there was no meaningful file diff to apply there.
+Concerns:
+- None blocking. The build passed; the only output beyond success was Vite's existing chunk-size warning.
