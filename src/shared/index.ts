@@ -128,8 +128,6 @@ function formatSubmittedBy(submittedBy: string): string {
   return submittedBy.includes('(manual)') ? submittedBy : 'Self Report'
 }
 
-import { mergeHistoricalDemoData } from '@/features/demo/historical-demo-data'
-
 function uid(): string {
   return crypto.randomUUID()
 }
