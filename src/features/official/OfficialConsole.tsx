@@ -5,6 +5,7 @@ import type { DashboardRow, CheckInStatus } from '@/shared'
 import { useSession } from '@/features/auth/session-context'
 import { SmsSimulatorDrawer } from '@/features/alerts'
 import type { AlertIngestionResult } from '@/features/alerts'
+import { getHistoricalIncidentMeta } from '@/features/demo/historical-selectors'
 
 type DeveloperApplicationStatus = 'pending' | 'accepted' | 'rejected'
 
@@ -285,6 +286,7 @@ export function OfficialConsole() {
 
   const activeCampaign = data.campaigns.find(c => c.status === 'active')
   const selectedCampaign = selectedCampaignId ? data.campaigns.find(c => c.id === selectedCampaignId) : activeCampaign
+  const selectedCampaignMeta = selectedCampaign ? getHistoricalIncidentMeta(selectedCampaign.id) : null
   const dashboard = selectedCampaign ? getDashboard(selectedCampaign.id) : null
   const queueRows = dashboard
     ? dashboard.rows
@@ -608,6 +610,11 @@ export function OfficialConsole() {
                     <p className="text-xs text-slate-500 font-medium m-0 truncate">
                       Barangay {selectedCampaign.barangay_code} — {selectedCampaign.disaster_type}, {selectedCampaign.disaster_date}
                     </p>
+                    {selectedCampaignMeta && (
+                      <p className="text-xs text-blue-700 font-semibold m-0 mt-1 truncate">
+                        Live tracking: {selectedCampaignMeta.barangayLabel} • Historical affected population: {selectedCampaignMeta.historicalAffectedPeople.toLocaleString()}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
@@ -639,7 +646,7 @@ export function OfficialConsole() {
               <>
                 {dashboard && (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
                       <div className="section-card p-[18px]" style={{ border: '1px solid var(--line)', background: '#fff' }}>
                         <strong style={{ display: 'block', fontSize: 'clamp(26px, 5vw, 36px)', color: 'var(--blue-2)', letterSpacing: '-0.05em' }}>{dashboard.affectedCount}</strong>
                         <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>Check-ins</span>
@@ -648,7 +655,38 @@ export function OfficialConsole() {
                         <strong style={{ display: 'block', fontSize: 'clamp(26px, 5vw, 36px)', color: 'var(--red)', letterSpacing: '-0.05em' }}>{dashboard.unresolvedCount}</strong>
                         <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>Unresolved</span>
                       </div>
+                      <div className="section-card p-[18px]" style={{ border: '1px solid var(--line)', background: '#fff' }}>
+                        <strong style={{ display: 'block', fontSize: 'clamp(18px, 4vw, 24px)', color: '#7c3aed', letterSpacing: '-0.04em' }}>
+                          {selectedCampaignMeta?.barangayLabel ?? `Barangay ${selectedCampaign.barangay_code}`}
+                        </strong>
+                        <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>Tracked City / Area</span>
+                      </div>
+                      <div className="section-card p-[18px]" style={{ border: '1px solid var(--line)', background: '#fff' }}>
+                        <strong style={{ display: 'block', fontSize: 'clamp(26px, 5vw, 36px)', color: '#0f766e', letterSpacing: '-0.05em' }}>
+                          {selectedCampaignMeta ? selectedCampaignMeta.historicalAffectedPeople.toLocaleString() : '--'}
+                        </strong>
+                        <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>Historical Population Affected</span>
+                      </div>
                     </div>
+
+                    {selectedCampaignMeta && (
+                      <div className="section-card mb-4">
+                        <div className="p-4" style={{ borderBottom: '1px solid #edf1f8' }}>
+                          <h3 style={{ margin: 0 }}>Priority supply tracking</h3>
+                          <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--muted-text)' }}>
+                            Historical response needs for {selectedCampaignMeta.barangayLabel}, paired with the live barangay assessment intake below.
+                          </p>
+                        </div>
+                        <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {selectedCampaignMeta.neededSupplies.map(supply => (
+                            <div key={supply.label} className="rounded-[16px] p-4" style={{ border: '1px solid #edf1f8', background: '#fff' }}>
+                              <strong style={{ display: 'block', fontSize: '14px', color: 'var(--ink)' }}>{supply.label}</strong>
+                              <span style={{ display: 'block', marginTop: '6px', color: 'var(--blue-2)', fontWeight: 800, fontSize: '18px' }}>{supply.quantity}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_0.68fr] gap-3 mb-4">
                       <div className="section-card">

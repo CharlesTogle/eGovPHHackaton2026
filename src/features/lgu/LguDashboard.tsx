@@ -1,22 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Shell } from '@/components/Shell'
 import { useSession } from '@/features/auth/session-context'
+import { useHandaStore } from '@/shared'
+import { buildLguIncidentRows, summarizeNeededSupplies } from '@/features/demo/historical-selectors'
 
 type LguTab = 'dashboard' | 'developers'
-type IncidentStatus = 'monitoring' | 'responding' | 'stabilized'
 type DeveloperApplicationStatus = 'pending' | 'accepted' | 'rejected'
-
-type IncidentSummary = {
-  id: string
-  disaster: string
-  barangays: number
-  happenedOn: string
-  status: IncidentStatus
-  affected: number
-  unresolved: number
-  visited: number
-  resolved: number
-}
 
 type DeveloperApplication = {
   id: string
@@ -29,42 +18,6 @@ type DeveloperApplication = {
   submittedAt: string
   status: DeveloperApplicationStatus
 }
-
-const INCIDENTS: IncidentSummary[] = [
-  {
-    id: 'incident-odette',
-    disaster: 'Typhoon Odette',
-    barangays: 12,
-    happenedOn: '2026-07-28',
-    status: 'responding',
-    affected: 1248,
-    unresolved: 318,
-    visited: 522,
-    resolved: 408,
-  },
-  {
-    id: 'incident-aghon',
-    disaster: 'Flooding from Aghon',
-    barangays: 8,
-    happenedOn: '2026-07-12',
-    status: 'monitoring',
-    affected: 684,
-    unresolved: 146,
-    visited: 231,
-    resolved: 307,
-  },
-  {
-    id: 'incident-quake',
-    disaster: 'Earthquake Aftershock Sweep',
-    barangays: 5,
-    happenedOn: '2026-06-30',
-    status: 'stabilized',
-    affected: 233,
-    unresolved: 18,
-    visited: 64,
-    resolved: 151,
-  },
-]
 
 const MOCK_DEVELOPER_APPLICATIONS: DeveloperApplication[] = [
   {
@@ -123,24 +76,17 @@ function formatDate(value: string) {
 
 export function LguDashboard() {
   const { session, logout } = useSession()
+  const { data, getDashboard, loading } = useHandaStore()
   const [tab, setTab] = useState<LguTab>('dashboard')
   const [applications, setApplications] = useState<DeveloperApplication[]>(loadDeveloperApplications)
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState('')
 
-  if (!session) return null
-
-  const profile = session.profile
-  const official = {
-    name: `${profile.first_name} ${profile.last_name}`,
-    uniqid: profile.uniqid,
-    role: 'lgu',
-    barangay_code: profile.municipality_code,
-  }
+  const profile = session?.profile
 
   const visibleApplications = useMemo(
-    () => applications.filter(application => application.municipalityCode === profile.municipality_code),
-    [applications, profile.municipality_code],
+    () => (profile ? applications.filter(application => application.municipalityCode === profile.municipality_code) : []),
+    [applications, profile],
   )
   const pendingApplications = visibleApplications.filter(application => application.status === 'pending')
   const selectedApplication = selectedApplicationId
@@ -151,17 +97,33 @@ export function LguDashboard() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(applications))
   }, [applications])
 
-  const totals = INCIDENTS.reduce(
+  const incidentRows = useMemo(
+    () => buildLguIncidentRows({ campaigns: data.campaigns, getDashboard }),
+    [data.campaigns, getDashboard],
+  )
+  const neededSupplies = useMemo(() => summarizeNeededSupplies(incidentRows), [incidentRows])
+
+  const totals = incidentRows.reduce(
     (acc, incident) => ({
       disasters: acc.disasters + 1,
-      affected: acc.affected + incident.affected,
+      affected: acc.affected + incident.historicalAffectedPeople,
+      checkIns: acc.checkIns + incident.assessmentCheckIns,
       unresolved: acc.unresolved + incident.unresolved,
       visited: acc.visited + incident.visited,
       resolved: acc.resolved + incident.resolved,
-      barangays: acc.barangays + incident.barangays,
+      barangays: acc.barangays + 1,
     }),
-    { disasters: 0, affected: 0, unresolved: 0, visited: 0, resolved: 0, barangays: 0 },
+    { disasters: 0, affected: 0, checkIns: 0, unresolved: 0, visited: 0, resolved: 0, barangays: 0 },
   )
+
+  if (!session || !profile) return null
+
+  const official = {
+    name: `${profile.first_name} ${profile.last_name}`,
+    uniqid: profile.uniqid,
+    role: 'lgu',
+    barangay_code: profile.municipality_code,
+  }
 
   function showToast(msg: string) {
     setToastMsg(msg)
@@ -183,7 +145,7 @@ export function LguDashboard() {
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <span className="status-chip open">Mock only</span>
+                  <span className="status-chip open">Shared demo data</span>
                   <span className="status-chip" style={{ background: '#eef2ff', color: '#42506a' }}>Parent LGU view</span>
                 </div>
                 <h2 style={{ margin: '0 0 4px', fontSize: 'clamp(22px, 4vw, 30px)', letterSpacing: '-0.05em' }}>LGU Incident Command Dashboard</h2>
@@ -193,22 +155,22 @@ export function LguDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mt-4 mb-4">
-              <div className="section-card p-[18px]" style={{ border: '1px solid var(--line)', background: '#fff' }}>
-                <strong style={{ display: 'block', fontSize: 'clamp(28px, 5vw, 38px)', color: 'var(--blue-2)', letterSpacing: '-0.05em' }}>{totals.disasters}</strong>
-                <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>Disasters recorded</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-5 mb-6">
+              <div className="section-card p-5">
+                <span className="text-xs font-semibold text-[var(--muted-text)] block mb-1">Disasters Recorded</span>
+                <strong className="text-3xl font-extrabold text-[var(--blue-primary)]">{totals.disasters}</strong>
               </div>
-              <div className="section-card p-[18px]" style={{ border: '1px solid var(--line)', background: '#fff' }}>
-                <strong style={{ display: 'block', fontSize: 'clamp(28px, 5vw, 38px)', color: 'var(--red)', letterSpacing: '-0.05em' }}>{totals.affected.toLocaleString()}</strong>
-                <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>People affected</span>
+              <div className="section-card p-5">
+                <span className="text-xs font-semibold text-[var(--muted-text)] block mb-1">Historical People Affected</span>
+                <strong className="text-3xl font-extrabold text-[var(--danger)]">{totals.affected.toLocaleString()}</strong>
               </div>
-              <div className="section-card p-[18px]" style={{ border: '1px solid var(--line)', background: '#fff' }}>
-                <strong style={{ display: 'block', fontSize: 'clamp(28px, 5vw, 38px)', color: 'var(--warn)', letterSpacing: '-0.05em' }}>{totals.unresolved.toLocaleString()}</strong>
-                <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>People unresolved</span>
+              <div className="section-card p-5">
+                <span className="text-xs font-semibold text-[var(--muted-text)] block mb-1">Assessment Check-ins</span>
+                <strong className="text-3xl font-extrabold text-[var(--warn)]">{totals.checkIns.toLocaleString()}</strong>
               </div>
-              <div className="section-card p-[18px]" style={{ border: '1px solid var(--line)', background: '#fff' }}>
-                <strong style={{ display: 'block', fontSize: 'clamp(28px, 5vw, 38px)', color: 'var(--good)', letterSpacing: '-0.05em' }}>{totals.barangays}</strong>
-                <span style={{ color: 'var(--muted-text)', fontWeight: 700, fontSize: '14px' }}>Barangay deployments</span>
+              <div className="section-card p-5">
+                <span className="text-xs font-semibold text-[var(--muted-text)] block mb-1">Incidents Synced</span>
+                <strong className="text-3xl font-extrabold text-[var(--good)]">{totals.barangays}</strong>
               </div>
             </div>
 
@@ -216,35 +178,44 @@ export function LguDashboard() {
               <div className="section-card overflow-hidden">
                 <div className="p-4" style={{ borderBottom: '1px solid #edf1f8' }}>
                   <h3 style={{ margin: 0 }}>Affected people per disaster</h3>
-                  <p style={{ margin: '6px 0 0', color: 'var(--muted-text)', fontSize: '13px' }}>Each row is an incident rollup across participating barangays.</p>
+                  <p style={{ margin: '6px 0 0', color: 'var(--muted-text)', fontSize: '13px' }}>Each row comes from the same seeded assessments shown in the assessment builder.</p>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] border-collapse text-sm">
+                  <table className="w-full min-w-[960px] border-collapse text-sm">
                     <thead>
                       <tr>
                         <th className="text-left py-3 px-4 font-bold" style={{ color: '#4b5568', background: '#f8faff', borderBottom: '1px solid #edf1f8' }}>Disaster</th>
                         <th className="text-left py-3 px-4 font-bold" style={{ color: '#4b5568', background: '#f8faff', borderBottom: '1px solid #edf1f8' }}>Date</th>
-                        <th className="text-left py-3 px-4 font-bold" style={{ color: '#4b5568', background: '#f8faff', borderBottom: '1px solid #edf1f8' }}>Barangays</th>
-                        <th className="text-left py-3 px-4 font-bold" style={{ color: '#4b5568', background: '#f8faff', borderBottom: '1px solid #edf1f8' }}>Affected</th>
+                        <th className="text-left py-3 px-4 font-bold" style={{ color: '#4b5568', background: '#f8faff', borderBottom: '1px solid #edf1f8' }}>Location</th>
+                        <th className="text-left py-3 px-4 font-bold" style={{ color: '#4b5568', background: '#f8faff', borderBottom: '1px solid #edf1f8' }}>Historical Affected</th>
+                        <th className="text-left py-3 px-4 font-bold" style={{ color: '#4b5568', background: '#f8faff', borderBottom: '1px solid #edf1f8' }}>Check-ins</th>
+                        <th className="text-left py-3 px-4 font-bold" style={{ color: '#4b5568', background: '#f8faff', borderBottom: '1px solid #edf1f8' }}>eReport</th>
                         <th className="text-left py-3 px-4 font-bold" style={{ color: '#4b5568', background: '#f8faff', borderBottom: '1px solid #edf1f8' }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {INCIDENTS.map(incident => (
+                      {incidentRows.map(incident => (
                         <tr key={incident.id} style={{ borderBottom: '1px solid #edf1f8' }}>
                           <td className="py-3 px-4">
                             <strong style={{ display: 'block', color: 'var(--ink)' }}>{incident.disaster}</strong>
                           </td>
                           <td className="py-3 px-4" style={{ color: '#556075' }}>{formatDate(incident.happenedOn)}</td>
-                          <td className="py-3 px-4" style={{ color: '#556075' }}>{incident.barangays}</td>
-                          <td className="py-3 px-4" style={{ color: 'var(--blue-2)', fontWeight: 700 }}>{incident.affected.toLocaleString()}</td>
+                          <td className="py-3 px-4" style={{ color: '#556075' }}>{incident.locationLabel}</td>
+                          <td className="py-3 px-4" style={{ color: 'var(--blue-2)', fontWeight: 700 }}>{incident.historicalAffectedPeople.toLocaleString()}</td>
+                          <td className="py-3 px-4" style={{ color: '#556075', fontWeight: 700 }}>{incident.assessmentCheckIns.toLocaleString()}</td>
+                          <td className="py-3 px-4"><code style={{ padding: '4px 8px', borderRadius: '999px', background: '#eef2ff', color: '#42506a', fontSize: '12px' }}>{incident.ereportReportType}</code></td>
                           <td className="py-3 px-4">
-                            <span className={`status-chip ${incident.status === 'stabilized' ? 'good' : incident.status === 'responding' ? 'open' : 'warn'}`}>
+                            <span className={`status-chip ${incident.status === 'active' ? 'open' : incident.status === 'closed' ? 'good' : 'warn'}`}>
                               {incident.status}
                             </span>
                           </td>
                         </tr>
                       ))}
+                      {incidentRows.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="py-6 px-4 text-center" style={{ color: 'var(--muted-text)' }}>No shared assessment incidents available.</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -253,7 +224,7 @@ export function LguDashboard() {
               <div className="section-card">
                 <div className="p-4" style={{ borderBottom: '1px solid #edf1f8' }}>
                   <h3 style={{ margin: 0 }}>People per status</h3>
-                  <p style={{ margin: '6px 0 0', color: 'var(--muted-text)', fontSize: '13px' }}>LGU-wide totals, scoped by active mock incidents.</p>
+                  <p style={{ margin: '6px 0 0', color: 'var(--muted-text)', fontSize: '13px' }}>Live assessment totals computed from the same seeded incidents.</p>
                 </div>
                 <div className="p-4 flex flex-col gap-3">
                   <div className="rounded-[18px] p-4" style={{ border: '1px solid #edf1f8', background: '#fff7e8' }}>
@@ -271,6 +242,28 @@ export function LguDashboard() {
                 </div>
               </div>
             </div>
+
+            <div className="section-card mt-4">
+              <div className="p-4" style={{ borderBottom: '1px solid #edf1f8' }}>
+                <h3 style={{ margin: 0 }}>Priority needed supplies</h3>
+                <p style={{ margin: '6px 0 0', color: 'var(--muted-text)', fontSize: '13px' }}>Shared supply requests aggregated from the current historical incident set.</p>
+              </div>
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {neededSupplies.map(supply => (
+                  <div key={supply.label} className="rounded-[18px] p-4" style={{ border: '1px solid #edf1f8', background: '#fff' }}>
+                    <strong style={{ display: 'block', fontSize: '15px', color: 'var(--ink)' }}>{supply.label}</strong>
+                    <span style={{ display: 'block', marginTop: '6px', color: 'var(--blue-2)', fontWeight: 800, fontSize: '20px' }}>{supply.quantity}</span>
+                    <span style={{ display: 'block', marginTop: '4px', color: 'var(--muted-text)', fontSize: '12px' }}>
+                      Referenced by {supply.incidentCount} {supply.incidentCount === 1 ? 'incident' : 'incidents'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {loading && (
+              <p style={{ marginTop: '12px', color: 'var(--muted-text)', fontSize: '13px' }}>Refreshing shared assessment data...</p>
+            )}
           </div>
         )}
 
