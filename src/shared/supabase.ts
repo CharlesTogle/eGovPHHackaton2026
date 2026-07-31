@@ -104,6 +104,12 @@ export async function insertAnswersDb(answers: CheckInAnswer[]) {
   if (error) console.error('insertAnswersDb:', error)
 }
 
+export async function updateQuestionDb(id: string, fields: { question_text: string; need_category: string }) {
+  if (!db()) return
+  const { error } = await table('campaign_questions').update(fields).eq('id', id)
+  if (error) console.error('updateQuestionDb:', error)
+}
+
 export async function insertAlert(alert: Alert) {
   if (!db()) return null
   const { data, error } = await table('alerts').insert(alert).select().single()

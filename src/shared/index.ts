@@ -79,6 +79,14 @@ export function can(role: OfficialRole, permission: Permission): boolean {
   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false
 }
 
+export function formatAnonymizedIdentity(name: string, checkInId: string) {
+  const [first = 'Resident', ...rest] = name.trim().split(/\s+/)
+  const last = rest.at(-1) ?? 'Citizen'
+  const maskedName = `${first.charAt(0)}*** ${last.charAt(0)}***`
+  const residentKey = checkInId.slice(0, 8).toUpperCase()
+  return { maskedName, residentKey }
+}
+
 export type DashboardRow = {
   checkIn: CheckIn
   answers: CheckInAnswer[]
@@ -175,6 +183,14 @@ export function useHandaStore() {
   const removeQuestion = useCallback((questionId: string) => {
     setData(d => ({ ...d, questions: d.questions.filter(q => q.id !== questionId) }))
     supabaseDb.deleteQuestion(questionId)
+  }, [])
+
+  const updateQuestion = useCallback(async (questionId: string, question_text: string, need_category: string) => {
+    setData(d => ({
+      ...d,
+      questions: d.questions.map(q => q.id === questionId ? { ...q, question_text, need_category } : q),
+    }))
+    await supabaseDb.updateQuestionDb(questionId, { question_text, need_category })
   }, [])
 
   const updateCampaignStatus = useCallback(async (campaignId: string, status: CampaignStatus) => {
@@ -306,6 +322,7 @@ export function useHandaStore() {
     saveCampaign,
     addQuestion,
     removeQuestion,
+    updateQuestion,
     updateCampaignStatus,
     updateCaseStatus,
     submitCheckIn,
