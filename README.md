@@ -54,7 +54,7 @@ What makes Handa truly unique is that it is **not just a standalone app—it is 
 This project heavily leverages the eGov PH ecosystem. The following APIs and Datasets are integrated within Handa:
 - **eGov SSO API:** Used for secure authentication (simulated through Demo Accounts for the hackathon).
 - **eGov AI API:** Used to power the Citizen Chat feature for disaster preparedness guides and local dialect translation.
-- **eReport API & Datasets:** Used to log and reflect real-time citizen incident concerns (medical, rescue, red tape) directly into the LGU dashboards.
+- **eReport API & Datasets:** Used to log and reflect real-time citizen incident concerns (medical, rescue, red tape) directly into the LGU dashboards. **Why rely on eReport?** Instead of building a redundant, isolated reporting structure from scratch that citizens must download and learn during high-stress situations, Handa integrates directly with the existing eGov national infrastructure. This ensures citizens can use the app they already know, while providing LGUs with a unified, official data stream.
 - **eGov PSA Datasets:** Provides the foundational demographics and regional data used for mapping LGUs and barangays, and displaying population fallbacks when generating analytics.
 
 ---
