@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mergeHistoricalDemoData } from './historical-demo-data'
 
 describe('historical demo data fallback', () => {
-  it('replaces legacy non-historical campaigns with the curated historical set', () => {
+  it('preserves legacy non-historical campaigns and adds the curated historical set', () => {
     const merged = mergeHistoricalDemoData({
       campaigns: [
         {
@@ -26,6 +26,7 @@ describe('historical demo data fallback', () => {
     } as never)
 
     expect(merged.campaigns.map((campaign) => campaign.id)).toEqual([
+      'a0000000-0000-0000-0000-000000000001',
       'a1000000-0000-0000-0000-000000000001',
       'a1000000-0000-0000-0000-000000000002',
       'a1000000-0000-0000-0000-000000000003',

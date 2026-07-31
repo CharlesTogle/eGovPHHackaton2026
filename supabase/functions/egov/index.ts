@@ -314,8 +314,8 @@ async function confirmOtp(email: string, otp: string): Promise<{ verified: boole
   return { verified: data.code === 200 }
 }
 
-async function fetchSsoProfile(): Promise<EgovProfile> {
-  const exchangeCode = await generateExchangeCode()
+async function fetchSsoProfile(providedExchangeCode?: string): Promise<EgovProfile> {
+  const exchangeCode = providedExchangeCode ?? (await generateExchangeCode())
   const accessToken = await generateSsoAccessToken(exchangeCode)
   return ssoAuthentication(accessToken)
 }
@@ -503,7 +503,7 @@ Deno.serve(async (req) => {
       case "confirm-otp":
         return json(await confirmOtp(requireString(payload.email, "email"), requireString(payload.otp, "otp")))
       case "sso-profile":
-        return json(await fetchSsoProfile())
+        return json(await fetchSsoProfile(payload.exchange_code as string | undefined))
       case "translate":
         return json(await translate(payload))
       case "assistant":
