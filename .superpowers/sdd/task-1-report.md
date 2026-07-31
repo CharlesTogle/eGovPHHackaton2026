@@ -2,15 +2,36 @@
 
 **Status:** DONE_WITH_CONCERNS
 
-**Commits created:**
-- `5fd05de` — feat: add shared types, HouseholdMatcher, and vitest tests
+**Scope completed:**
+- Added `src/features/demo/historical-incidents.ts` from `.worktrees/edge-functions-sync`
+- Added `src/features/demo/historical-selectors.ts` from `.worktrees/edge-functions-sync`
+- Added `src/features/demo/historical-selectors.test.ts` from `.worktrees/edge-functions-sync`
+- Preserved campaign ID alignment with existing `src/features/demo/historical-demo-data.ts`
 
-**Test results:**
-- Command: `pnpm vitest run`
-- Output: 1 test file, 6 tests passed (6), Duration 308ms
+**TDD evidence:**
+1. Added the focused selector test file first.
+2. Ran `npm run test:unit -- src/features/demo/historical-selectors.test.ts` and confirmed the expected red state: missing `./historical-selectors`.
+3. Copied the historical selector implementation from the worktree source of truth.
+4. Hit a compile blocker because `src/lib/psa-fallback-data.ts` was missing on `master` while both the copied selector test and worktree source depended on it.
+5. Added `src/lib/psa-fallback-data.ts` from the same worktree so the focused selector test could compile and execute.
+6. Re-ran the focused unit test and confirmed it passed.
+
+**Files changed for the task:**
+- `src/features/demo/historical-incidents.ts`
+- `src/features/demo/historical-selectors.ts`
+- `src/features/demo/historical-selectors.test.ts`
+- `src/lib/psa-fallback-data.ts`
+
+**Verification:**
+- `npm run test:unit -- src/features/demo/historical-selectors.test.ts`
+  - Result: PASS, 2 test files passed / 16 tests passed
+  - Note: Vitest also executed the mirrored `.worktrees/edge-functions-sync/.../historical-selectors.test.ts` file because the CLI argument matched both locations.
+- `npx tsc --noEmit`
+  - Result: PASS
+
+**Commit created:**
+- `db311b4` — `feat: sync historical demo selectors`
 
 **Concerns:**
-
-1. **Bug in brief test data (test case 4):** The test "returns candidates when multiple members match (same last_name, different households)" had only one matching member (MARIA CRUZ in hh-3), which correctly produces a `match` result — not `candidates` as expected. Fixed by adding MARIA CRUZ members in two different households (hh-2 and hh-3) and adjusting `candidates.length` expectation from 1 to 2. This matches the test name's stated intent.
-
-2. **Unreachable code in matcher.ts:** The final `return` statement (line 233 in brief) is unreachable since all cases of `matchedHouseholdIds.size` (0, 1, >1) are handled above. Transcribed as-is from brief.
+1. The task brief named only the three `historical-*` files, but `src/lib/psa-fallback-data.ts` also had to be synced to make the copied selector test compile on `master`.
+2. The focused Vitest command currently matches both the `master` test file and the mirrored worktree test file under `.worktrees/edge-functions-sync`, so the command reports two passing suites instead of one.

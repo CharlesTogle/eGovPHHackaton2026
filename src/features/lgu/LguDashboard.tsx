@@ -249,7 +249,7 @@ export function LguDashboard() {
                 <p style={{ margin: '6px 0 0', color: 'var(--muted-text)', fontSize: '13px' }}>Shared supply requests aggregated from the current historical incident set.</p>
               </div>
               <div className="p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                {neededSupplies.map(supply => (
+                {neededSupplies.map((supply) => (
                   <div key={supply.label} className="rounded-[18px] p-4" style={{ border: '1px solid #edf1f8', background: '#fff' }}>
                     <strong style={{ display: 'block', fontSize: '15px', color: 'var(--ink)' }}>{supply.label}</strong>
                     <span style={{ display: 'block', marginTop: '6px', color: 'var(--blue-2)', fontWeight: 800, fontSize: '20px' }}>{supply.quantity}</span>

@@ -109,27 +109,43 @@ const emptyData: HandaData = {
   alerts: [],
 }
 
+export function formatAnonymizedIdentity(fullName: string, checkInId: string): { maskedName: string; residentKey: string } {
+  if (!fullName) return { maskedName: 'R*** R***', residentKey: 'RES-0105-0000' }
+  const parts = fullName.trim().split(/\s+/)
+  const maskedParts = parts.map(part => {
+    if (part.length <= 1) return part.toUpperCase()
+    return part[0].toUpperCase() + '***'
+  })
+  const maskedName = maskedParts.join(' ')
+  const cleanId = checkInId.replace(/[^a-fA-F0-9]/g, '')
+  const keySnippet = (cleanId.slice(-4) || '8D4F').toUpperCase()
+  const residentKey = `RES-0105-${keySnippet}`
+  return { maskedName, residentKey }
+}
+
 function formatSubmittedBy(submittedBy: string): string {
   return submittedBy.includes('(manual)') ? submittedBy : 'Self Report'
 }
+
+import { mergeHistoricalDemoData } from '@/features/demo/historical-demo-data'
 
 function uid(): string {
   return crypto.randomUUID()
 }
 
 export function useHandaStore() {
-  const [data, setData] = useState<HandaData>(emptyData)
+  const [data, setData] = useState<HandaData>(() => mergeHistoricalDemoData(emptyData))
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     supabaseDb.loadAll().then(remote => {
-      if (remote) setData(remote)
+      setData(mergeHistoricalDemoData(remote))
       setLoading(false)
     })
 
     const intervalId = window.setInterval(() => {
       supabaseDb.loadAll().then(remote => {
-        if (remote) setData(remote)
+        setData(mergeHistoricalDemoData(remote))
       })
     }, 5000)
 
@@ -175,6 +191,14 @@ export function useHandaStore() {
   const removeQuestion = useCallback((questionId: string) => {
     setData(d => ({ ...d, questions: d.questions.filter(q => q.id !== questionId) }))
     supabaseDb.deleteQuestion(questionId)
+  }, [])
+
+  const updateQuestion = useCallback(async (questionId: string, question_text: string, need_category: string) => {
+    setData(d => ({
+      ...d,
+      questions: d.questions.map(q => q.id === questionId ? { ...q, question_text, need_category } : q),
+    }))
+    await supabaseDb.updateQuestionDb(questionId, { question_text, need_category })
   }, [])
 
   const updateCampaignStatus = useCallback(async (campaignId: string, status: CampaignStatus) => {
@@ -259,17 +283,19 @@ export function useHandaStore() {
         : s
     }
 
+    const header = ['Resident_Key', 'Anonymized_Name', 'Reported_Needs', 'Status', 'Submitted_By', 'Timestamp'].join(',')
     const rows = checkIns.map(ci => {
+      const { maskedName, residentKey } = formatAnonymizedIdentity(ci.name, ci.id)
       const answers = data.answers.filter(a => a.check_in_id === ci.id)
       const needs = answers
         .filter(a => a.answer === 'yes')
         .map(a => data.questions.find(q => q.id === a.question_id)?.need_category ?? '')
         .filter(Boolean)
         .join('; ')
-      return [esc(ci.name), esc(needs), ci.status, esc(formatSubmittedBy(ci.submitted_by)), ci.created_at].join(',')
+      return [esc(residentKey), esc(maskedName), esc(needs), ci.status, esc(formatSubmittedBy(ci.submitted_by)), ci.created_at].join(',')
     })
 
-    return `Name,Needs,Status,Submitted By,Created At\n${rows.join('\n')}`
+    return [header, ...rows].join('\n')
   }, [data])
 
   const copyQuestions = useCallback((sourceCampaignId: string, targetCampaignId: string) => {
@@ -306,6 +332,7 @@ export function useHandaStore() {
     saveCampaign,
     addQuestion,
     removeQuestion,
+    updateQuestion,
     updateCampaignStatus,
     updateCaseStatus,
     submitCheckIn,

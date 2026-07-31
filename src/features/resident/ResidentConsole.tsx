@@ -101,14 +101,24 @@ export function ResidentConsole() {
     : []
   const eReportDefaults = activeCampaign ? getCampaignEReportDefaults(activeCampaign.id) : null
 
+  const [initializedCampaignId, setInitializedCampaignId] = useState<string | null>(null)
+  const [initializedCheckInId, setInitializedCheckInId] = useState<string | null>(null)
+
+  const activeCampaignId = activeCampaign?.id
+  const residentCheckInId = residentCheckIn?.id
+
   useEffect(() => {
-    if (!shouldShowHandaSheet) return
-    if (!residentCheckIn) {
-      setSheetState('mid')
-      return
+    if (!shouldShowHandaSheet || !activeCampaignId) return
+    if (initializedCampaignId !== activeCampaignId || initializedCheckInId !== residentCheckInId) {
+      setInitializedCampaignId(activeCampaignId)
+      setInitializedCheckInId(residentCheckInId ?? null)
+      if (residentCheckInId) {
+        setSheetState('minimized')
+      } else {
+        setSheetState('mid')
+      }
     }
-    setSheetState('minimized')
-  }, [residentCheckIn, shouldShowHandaSheet])
+  }, [activeCampaignId, residentCheckInId, shouldShowHandaSheet, initializedCampaignId, initializedCheckInId])
 
   function handleOpenEReport() {
     setSheetState('minimized')
@@ -413,15 +423,15 @@ export function ResidentConsole() {
 
       {showSubmissionModal && (
         <div className="modal-overlay" onClick={() => setShowSubmissionModal(false)}>
-          <div className="modal-card resident-confirmation-modal" onClick={(event) => event.stopPropagation()}>
-            <p className="resident-mobile-eyebrow">Assessment Submitted</p>
-            <h2>Wait for the latest update from your LGU</h2>
-            <p>
+          <div className="modal-card max-w-[390px] w-[92vw] rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200" onClick={(event) => event.stopPropagation()}>
+            <p className="resident-mobile-eyebrow text-[11px] font-bold text-blue-700 uppercase tracking-widest mb-1">Assessment Submitted</p>
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 leading-tight m-0 mb-2">Wait for the latest update from your LGU</h2>
+            <p className="text-xs text-slate-600 leading-relaxed m-0 mb-4">
               Your household needs have been logged. Keep this sample QR ready for future scanning if your address or relief status needs field verification later on.
             </p>
 
-            <div className="resident-qr-card">
-              <div className="resident-qr-grid" aria-hidden="true">
+            <div className="resident-qr-card p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3.5 mb-5">
+              <div className="resident-qr-grid w-20 shrink-0" aria-hidden="true">
                 {Array.from({ length: 49 }).map((_, index) => (
                   <span
                     key={index}
@@ -437,13 +447,13 @@ export function ResidentConsole() {
                 ))}
               </div>
               <div>
-                <strong>Sample Resident Scan Code</strong>
-                <p>Use this later for address verification and addressed-help updates once LGU scanning is enabled.</p>
+                <strong className="text-xs font-bold text-slate-900 block">Sample Resident Scan Code</strong>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-normal">Use this later for address verification and addressed-help updates once LGU scanning is enabled.</p>
               </div>
             </div>
 
-            <div className="resident-confirmation-actions">
-              <button type="button" className="big-btn primary" onClick={() => setShowSubmissionModal(false)}>
+            <div className="flex justify-end">
+              <button type="button" className="big-btn primary text-xs font-bold py-2.5 px-6 rounded-xl shadow-xs" onClick={() => setShowSubmissionModal(false)}>
                 Got it
               </button>
             </div>

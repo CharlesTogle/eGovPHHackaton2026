@@ -6,6 +6,7 @@ import { useSession } from '@/features/auth/session-context'
 import { SmsSimulatorDrawer } from '@/features/alerts'
 import type { AlertIngestionResult } from '@/features/alerts'
 import { getHistoricalIncidentMeta } from '@/features/demo/historical-selectors'
+import { groupCampaignsForDisplay } from './assessment-list'
 
 type DeveloperApplicationStatus = 'pending' | 'accepted' | 'rejected'
 
@@ -190,16 +191,6 @@ export function OfficialConsole() {
   const [editQCat, setEditQCat] = useState('')
   const [selectedRow, setSelectedRow] = useState<DashboardRow | null>(null)
 
-  useEffect(() => {
-    if (editingCampaignId) {
-      const target = data.campaigns.find(c => c.id === editingCampaignId)
-      if (target) {
-        setName(target.name)
-        setDisasterType(target.disaster_type)
-        setDisasterDate(target.disaster_date)
-      }
-    }
-  }, [editingCampaignId, data.campaigns])
   const [modalStatus, setModalStatus] = useState<CheckInStatus>('unresolved')
   const [manualEntryOpen, setManualEntryOpen] = useState(false)
   const [manualName, setManualName] = useState('')
@@ -296,7 +287,7 @@ export function OfficialConsole() {
         ? a.checkIn.name.localeCompare(b.checkIn.name)
         : b.checkIn.name.localeCompare(a.checkIn.name))
     : []
-  const viewableCampaigns = data.campaigns
+  const viewableCampaigns = groupCampaignsForDisplay(data.campaigns)
   const visibleDeveloperApplications = developerApplications.filter(app => app.barangay_code === profile.barangay_code)
   const pendingDeveloperApplications = visibleDeveloperApplications.filter(app => app.status === 'pending')
   const selectedDeveloperApplication = selectedDeveloperApplicationId
@@ -523,7 +514,7 @@ export function OfficialConsole() {
                           }}
                         >
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
+                            <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 Z" />
                           </svg>
                           AI Draft
                         </span>
@@ -583,7 +574,7 @@ export function OfficialConsole() {
                   className="min-h-[42px] rounded-xl px-3 py-2 text-xs sm:text-sm w-full sm:w-auto sm:max-w-md border border-slate-300 bg-white text-slate-900 shadow-sm"
                 >
                   <option value="">— Select an assessment —</option>
-                  {viewableCampaigns.map(c => (
+                  {viewableCampaigns.flatMap(group => group.campaigns).map(c => (
                     <option key={c.id} value={c.id}>{c.name} ({c.status})</option>
                   ))}
                 </select>
@@ -678,7 +669,7 @@ export function OfficialConsole() {
                           </p>
                         </div>
                         <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-                          {selectedCampaignMeta.neededSupplies.map(supply => (
+                          {selectedCampaignMeta.neededSupplies.map((supply) => (
                             <div key={supply.label} className="rounded-[16px] p-4" style={{ border: '1px solid #edf1f8', background: '#fff' }}>
                               <strong style={{ display: 'block', fontSize: '14px', color: 'var(--ink)' }}>{supply.label}</strong>
                               <span style={{ display: 'block', marginTop: '6px', color: 'var(--blue-2)', fontWeight: 800, fontSize: '18px' }}>{supply.quantity}</span>
@@ -726,7 +717,7 @@ export function OfficialConsole() {
                             </select>
                           </div>
                         </div>
-                        <div className="overflow-x-auto">
+                        <div className="overflow-auto max-h-[520px]">
                           <table className="w-full min-w-[400px] border-collapse text-sm">
                             <thead>
                               <tr>
@@ -914,7 +905,7 @@ export function OfficialConsole() {
                   <line x1="12" y1="5" x2="12" y2="19" />
                   <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-                + New Assessment Draft
+                New Assessment Draft
               </button>
             </div>
 
@@ -957,7 +948,7 @@ export function OfficialConsole() {
                           id="campaign-name"
                           value={name}
                           onChange={e => setName(e.target.value)}
-                          placeholder="e.g. Typhoon Odette Response"
+                          placeholder="e.g. Typhoon Yolanda Rapid Assessment"
                           className="w-full min-h-[44px] rounded-xl px-3.5 py-2.5 text-sm border border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         />
                         <span className="text-[12px] text-slate-500">Displayed to citizens in the resident check-in prompt.</span>
@@ -1076,7 +1067,7 @@ export function OfficialConsole() {
                           ))}
                           {data.questions.filter(q => q.campaign_id === editingCampaignId).length === 0 && (
                             <div className="p-4 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50">
-                              <p className="text-xs text-slate-500 m-0">No questions added yet. Add your first question below or copy from an existing assessment.</p>
+                              <p className="text-xs text-slate-500 m-0">No questions added yet. Add the RDANA-style questions for this assessment below or copy from another historical scenario.</p>
                             </div>
                           )}
                         </div>
@@ -1114,7 +1105,7 @@ export function OfficialConsole() {
                       <form onSubmit={handleAddQuestion} className="flex flex-col gap-2 pt-3 mt-3 border-t border-slate-100 w-full overflow-hidden">
                         <span className="text-xs font-bold text-slate-800">Add Question</span>
                         <div className="grid grid-cols-1 sm:grid-cols-[1fr_130px] gap-2 w-full">
-                          <input value={newQ} onChange={e => setNewQ(e.target.value)} placeholder="e.g. Is your home damaged?" className="h-9 rounded-xl px-3 text-xs border border-slate-200 bg-white text-slate-900 w-full min-w-0" />
+                          <input value={newQ} onChange={e => setNewQ(e.target.value)} placeholder="e.g. Does your household need food or clean drinking water?" className="h-9 rounded-xl px-3 text-xs border border-slate-200 bg-white text-slate-900 w-full min-w-0" />
                           <input value={newCat} onChange={e => setNewCat(e.target.value)} placeholder="Need category" className="h-9 rounded-xl px-3 text-xs border border-slate-200 bg-white text-slate-900 w-full min-w-0" />
                         </div>
                         <button className="pill-btn ghost text-xs py-1.5 w-full font-bold justify-center" type="submit">
@@ -1134,7 +1125,7 @@ export function OfficialConsole() {
                       </div>
                       <h4 className="text-sm font-bold text-slate-800 m-0">No Assessment Selected</h4>
                       <p className="text-xs text-slate-500 mt-1 max-w-[260px]">
-                        Select an assessment from <strong>Saved Assessments</strong> below to configure its questions, or fill out the details form on the left to start a new draft.
+                        Select one of the curated historical assessments below to configure its questions, or fill out the details form on the left to add another assessment.
                       </p>
                     </div>
                   )}
@@ -1147,7 +1138,7 @@ export function OfficialConsole() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 mb-4">
                 <div>
                   <h3 className="text-base font-extrabold text-slate-900 m-0">Saved Assessments</h3>
-                  <p className="text-xs text-slate-500 m-0 mt-0.5">Manage existing incident assessment drafts, active deployments, and past records.</p>
+                  <p className="text-xs text-slate-500 m-0 mt-0.5">Assessments are grouped by status so drafts stay at the top and older records stay out of the way.</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
@@ -1156,71 +1147,82 @@ export function OfficialConsole() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3">
-                {data.campaigns.map(c => {
-                  const isCurrentlyEditing = c.id === editingCampaignId
-                  const qCount = data.questions.filter(q => q.campaign_id === c.id).length
-                  return (
-                    <div
-                      key={c.id}
-                      className={`p-4 rounded-xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 ${
-                        isCurrentlyEditing
-                          ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-400/30 shadow-sm'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="pt-0.5">
-                          <span className={`status-chip ${c.status === 'active' ? 'good' : c.status === 'closed' ? 'warn' : 'open'}`}>
-                            {c.status}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <strong className="text-sm sm:text-base font-bold text-slate-900">{c.name}</strong>
-                            {isCurrentlyEditing && (
-                              <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full inline-flex items-center gap-1 animate-pulse">
-                                Editing Now
-                              </span>
-                            )}
-                            {c.ai_generated && (
-                              <span className="text-[10px] bg-purple-100 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full font-bold">
-                                AI Draft
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-slate-500 font-medium m-0 mt-1">
-                            {c.disaster_type} • Date: {c.disaster_date} • {qCount} {qCount === 1 ? 'question' : 'questions'} configured
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                        {can(session.role, 'edit_questions') && (
-                          <button
-                            className={`pill-btn text-xs py-1.5 px-3.5 font-bold ${isCurrentlyEditing ? 'primary' : 'ghost'}`}
-                            onClick={() => handleSelectEditCampaign(c)}
-                          >
-                            {isCurrentlyEditing ? 'Active in Editor' : 'Edit Assessment'}
-                          </button>
-                        )}
-                        {can(session.role, 'publish_campaign') && c.status === 'draft' && (
-                          <button className="pill-btn primary text-xs py-1.5 px-3.5 font-bold" onClick={() => confirmAction('publish', c.id)}>
-                            Publish
-                          </button>
-                        )}
-                        {c.status === 'active' && (
-                          <button
-                            className="pill-btn ghost text-xs py-1.5 px-3 font-semibold text-blue-600 hover:bg-blue-50"
-                            onClick={() => { setSelectedCampaignId(c.id); navigate('dashboard'); }}
-                          >
-                            View Live Results
-                          </button>
-                        )}
+              <div className="flex flex-col gap-5">
+                {viewableCampaigns.map(group => (
+                  <div key={group.status} className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between px-1">
+                      <div>
+                        <h4 className="text-sm font-extrabold text-slate-900 m-0">{group.label}</h4>
+                        <p className="text-xs text-slate-500 m-0 mt-0.5">{group.campaigns.length} {group.campaigns.length === 1 ? 'assessment' : 'assessments'}</p>
                       </div>
                     </div>
-                  )
-                })}
+
+                    {group.campaigns.map(c => {
+                      const isCurrentlyEditing = c.id === editingCampaignId
+                      const qCount = data.questions.filter(q => q.campaign_id === c.id).length
+                      return (
+                        <div
+                          key={c.id}
+                          className={`p-4 rounded-xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                            isCurrentlyEditing
+                              ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-400/30 shadow-sm'
+                              : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="pt-0.5">
+                              <span className={`status-chip ${c.status === 'active' ? 'good' : c.status === 'closed' ? 'warn' : 'open'}`}>
+                                {c.status}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <strong className="text-sm sm:text-base font-bold text-slate-900">{c.name}</strong>
+                                {isCurrentlyEditing && (
+                                  <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full inline-flex items-center gap-1 animate-pulse">
+                                    Editing Now
+                                  </span>
+                                )}
+                                {c.ai_generated && (
+                                  <span className="text-[10px] bg-purple-100 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full font-bold">
+                                    AI Draft
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500 font-medium m-0 mt-1">
+                                {c.disaster_type} • Date: {c.disaster_date} • {qCount} {qCount === 1 ? 'question' : 'questions'} configured
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                            {can(session.role, 'edit_questions') && (
+                              <button
+                                className={`pill-btn text-xs py-1.5 px-3.5 font-bold ${isCurrentlyEditing ? 'primary' : 'ghost'}`}
+                                onClick={() => handleSelectEditCampaign(c)}
+                              >
+                                {isCurrentlyEditing ? 'Active in Editor' : 'Edit Assessment'}
+                              </button>
+                            )}
+                            {can(session.role, 'publish_campaign') && c.status === 'draft' && (
+                              <button className="pill-btn primary text-xs py-1.5 px-3.5 font-bold" onClick={() => confirmAction('publish', c.id)}>
+                                Publish
+                              </button>
+                            )}
+                            {c.status === 'active' && (
+                              <button
+                                className="pill-btn ghost text-xs py-1.5 px-3 font-semibold text-blue-600 hover:bg-blue-50"
+                                onClick={() => { setSelectedCampaignId(c.id); navigate('dashboard'); }}
+                              >
+                                View Live Results
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
           </>
@@ -1557,4 +1559,3 @@ export function OfficialConsole() {
     </>
   )
 }
-

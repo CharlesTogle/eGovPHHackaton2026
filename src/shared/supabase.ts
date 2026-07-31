@@ -10,11 +10,38 @@ import type {
 } from './index'
 import type { Alert } from '@/features/alerts/types'
 
+import { DEMO_CAMPAIGNS, DEMO_QUESTIONS, DEMO_CHECK_INS, DEMO_ANSWERS } from '@/features/demo/historical-demo-data'
+
 const db = () => supabase
 
 function table(name: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return db()!.from(name) as any
+}
+
+export async function seedDemoDataIfEmpty() {
+  if (!db()) return
+  try {
+    const { data: existing } = await table('campaigns').select('id').limit(1)
+    if (existing && existing.length > 0) return
+
+    console.log('Seeding Supabase DB with historical demo dataset...')
+    await table('campaigns').insert(DEMO_CAMPAIGNS)
+    await table('campaign_questions').insert(DEMO_QUESTIONS)
+
+    for (let i = 0; i < DEMO_CHECK_INS.length; i += 50) {
+      const chunk = DEMO_CHECK_INS.slice(i, i + 50)
+      await table('check_ins').insert(chunk)
+    }
+
+    for (let i = 0; i < DEMO_ANSWERS.length; i += 100) {
+      const chunk = DEMO_ANSWERS.slice(i, i + 100)
+      await table('check_in_answers').insert(chunk)
+    }
+    console.log('Supabase DB seeding completed successfully!')
+  } catch (err) {
+    console.error('Failed to seed demo data to Supabase:', err)
+  }
 }
 
 export async function loadAll(): Promise<HandaData | null> {
@@ -27,8 +54,14 @@ export async function loadAll(): Promise<HandaData | null> {
     table('alerts').select('*').order('created_at', { ascending: false }),
   ])
   if (campaigns.error) console.error('loadAll campaigns:', campaigns.error)
+  const loadedCampaigns = (campaigns.data ?? []) as unknown as Campaign[]
+
+  if (loadedCampaigns.length === 0) {
+    seedDemoDataIfEmpty().catch(console.error)
+  }
+
   return {
-    campaigns: (campaigns.data ?? []) as unknown as Campaign[],
+    campaigns: loadedCampaigns,
     questions: (questions.data ?? []) as unknown as CampaignQuestion[],
     checkIns: (checkIns.data ?? []) as unknown as CheckIn[],
     answers: (answers.data ?? []) as unknown as CheckInAnswer[],
@@ -60,6 +93,12 @@ export async function deleteQuestion(id: string) {
   if (!db()) return
   const { error } = await table('campaign_questions').delete().eq('id', id)
   if (error) console.error('deleteQuestion:', error)
+}
+
+export async function updateQuestionDb(id: string, fields: { question_text: string; need_category: string }) {
+  if (!db()) return
+  const { error } = await table('campaign_questions').update(fields).eq('id', id)
+  if (error) console.error('updateQuestionDb:', error)
 }
 
 export async function insertQuestions(qs: CampaignQuestion[]) {

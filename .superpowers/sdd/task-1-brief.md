@@ -1,247 +1,160 @@
-### Task 1: Install vitest + write shared types + HouseholdMatcher with tests
+### Task 1: Restore the Historical Selector Layer on `master`
 
 **Files:**
-- Create: `src/lib/types.ts`
-- Create: `src/lib/matcher.ts`
-- Create: `src/__tests__/matcher.test.ts`
-- Modify: `package.json` (add vitest)
-- Modify: `tsconfig.app.json` (exclude tests from app build)
-- Create: `vitest.config.ts`
+- Create: `src/features/demo/historical-incidents.ts`
+- Create: `src/features/demo/historical-selectors.ts`
+- Test: `src/features/demo/historical-selectors.test.ts`
+- Reference: `.worktrees/edge-functions-sync/src/features/demo/historical-incidents.ts`
+- Reference: `.worktrees/edge-functions-sync/src/features/demo/historical-selectors.ts`
+- Reference: `.worktrees/edge-functions-sync/src/features/demo/historical-selectors.test.ts`
 
 **Interfaces:**
-- Produces: `HouseholdMatcher.match(resident, members, households) → { kind: "match"; householdId: string } | { kind: "candidates"; candidates: Household[] }`
-- Produces: shared types `Campaign`, `CampaignQuestion`, `Household`, `HouseholdMember`, `CheckIn`, `CheckInAnswer`, `CampaignStatus`, `CheckInStatus`
+- Consumes: `Campaign` and `Dashboard` types from `@/shared`
+- Produces: `getHistoricalIncidentMeta(campaignId: string): HistoricalIncidentMeta | null`
+- Produces: `buildLguIncidentRows(input: { campaigns: Campaign[]; getDashboard: (campaignId: string) => Dashboard }): LguIncidentRow[]`
+- Produces: `summarizeNeededSupplies(rows: LguIncidentRow[]): NeededSupplySummary[]`
+- Produces: `getCampaignEReportDefaults(campaignId: string): CampaignEReportDefaults | null`
 
-- [ ] **Step 1: Install vitest**
-
-Run:
-```bash
-pnpm add -D vitest
-```
-
-- [ ] **Step 2: Create vitest.config.ts**
+- [ ] **Step 1: Write the failing test**
 
 ```ts
-import { defineConfig } from "vitest/config"
-import path from "path"
+import { describe, expect, it } from 'vitest'
+import { buildLguIncidentRows, getCampaignEReportDefaults, getHistoricalIncidentMeta, summarizeNeededSupplies } from './historical-selectors'
+import { PSA_BARANGAYS, PSA_MUNICIPALITIES, PSA_PROVINCES } from '@/lib/psa-fallback-data'
+import { HISTORICAL_INCIDENTS } from './historical-incidents'
 
-export default defineConfig({
-  test: {
-    include: ["src/__tests__/**/*.test.ts"],
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-})
-```
-
-- [ ] **Step 3: Exclude tests from app TypeScript build**
-
-In `tsconfig.app.json`, add to the existing object (after `"include": ["src"]`):
-```json
-"exclude": ["src/__tests__"]
-```
-
-- [ ] **Step 4: Create shared types**
-
-Create `src/lib/types.ts`:
-```ts
-export type CampaignStatus = "draft" | "active" | "closed" | "archived"
-export type CheckInStatus = "unresolved" | "visited" | "resolved"
-export type NeedCategory = "shelter" | "medical" | "food_water"
-
-export interface Campaign {
-  id: string
-  name: string
-  disaster_type: string
-  disaster_date: string
-  status: CampaignStatus
-  created_by: string
-  barangay_code: string
-  created_at: string
-  updated_at: string
-}
-
-export interface CampaignQuestion {
-  id: string
-  campaign_id: string
-  question_text: string
-  need_category: NeedCategory
-  display_order: number
-}
-
-export interface Household {
-  id: string
-  barangay_code: string
-  household_head_name: string
-  address: string
-  member_count: number
-}
-
-export interface HouseholdMember {
-  id: string
-  household_id: string
-  first_name: string
-  last_name: string
-}
-
-export interface CheckIn {
-  id: string
-  campaign_id: string
-  household_id: string
-  submitted_by: string
-  status: CheckInStatus
-  created_at: string
-  updated_at: string
-}
-
-export interface CheckInAnswer {
-  id: string
-  check_in_id: string
-  question_id: string
-  answer: string
-}
-
-export interface ResidentInfo {
-  first_name: string
-  last_name: string
-  barangay_code: string
-}
-```
-
-- [ ] **Step 5: Write failing matcher tests**
-
-Create `src/__tests__/matcher.test.ts`:
-```ts
-import { describe, it, expect } from "vitest"
-import { matchHousehold } from "@/lib/matcher"
-import type { HouseholdMember, Household, ResidentInfo } from "@/lib/types"
-
-const households: Household[] = [
-  { id: "hh-1", barangay_code: "0105503021", household_head_name: "Santos Household", address: "Blk 4", member_count: 4 },
-  { id: "hh-2", barangay_code: "0105503021", household_head_name: "Reyes Household", address: "Blk 5", member_count: 3 },
-  { id: "hh-3", barangay_code: "0105503021", household_head_name: "Cruz Household", address: "Blk 6", member_count: 5 },
-]
-
-const members: HouseholdMember[] = [
-  { id: "m-1", household_id: "hh-1", first_name: "MARIA", last_name: "SANTOS" },
-  { id: "m-2", household_id: "hh-1", first_name: "JUAN", last_name: "SANTOS" },
-  { id: "m-3", household_id: "hh-2", first_name: "PEDRO", last_name: "REYES" },
-  { id: "m-4", household_id: "hh-2", first_name: "ROSA", last_name: "REYES" },
-  { id: "m-5", household_id: "hh-3", first_name: "JOSE", last_name: "CRUZ" },
-]
-
-describe("matchHousehold", () => {
-  it("returns match when exactly one member matches by last_name + first_name (case-insensitive)", () => {
-    const resident: ResidentInfo = { first_name: "maria", last_name: "santos", barangay_code: "0105503021" }
-    const result = matchHousehold(resident, members, households)
-    expect(result).toEqual({ kind: "match", householdId: "hh-1" })
+describe('historical demo selectors', () => {
+  it('returns metadata for the Tacloban historical campaign', () => {
+    const meta = getHistoricalIncidentMeta('a1000000-0000-0000-0000-000000000001')
+    expect(meta?.historicalEventName).toBe('Typhoon Yolanda / Haiyan')
+    expect(meta?.municipalityCode).toBe('0803747000')
   })
 
-  it("returns match for exact uppercase match", () => {
-    const resident: ResidentInfo = { first_name: "PEDRO", last_name: "REYES", barangay_code: "0105503021" }
-    const result = matchHousehold(resident, members, households)
-    expect(result).toEqual({ kind: "match", householdId: "hh-2" })
+  it('returns campaign-aware eReport defaults', () => {
+    const defaults = getCampaignEReportDefaults('a1000000-0000-0000-0000-000000000002')
+    expect(defaults?.municipalityCode).toBe('1004305000')
+    expect(defaults?.subject).toContain('Sendong')
   })
 
-  it("returns candidates when no member matches", () => {
-    const resident: ResidentInfo = { first_name: "UNKNOWN", last_name: "PERSON", barangay_code: "0105503021" }
-    const result = matchHousehold(resident, members, households)
-    expect(result).toEqual({ kind: "candidates", candidates: households })
-  })
-
-  it("returns candidates when multiple members match (same last_name, different households)", () => {
-    const extraMembers: HouseholdMember[] = [
-      ...members,
-      { id: "m-6", household_id: "hh-3", first_name: "MARIA", last_name: "CRUZ" },
-    ]
-    const resident: ResidentInfo = { first_name: "MARIA", last_name: "CRUZ", barangay_code: "0105503021" }
-    const result = matchHousehold(resident, extraMembers, households)
-    expect(result.kind).toBe("candidates")
-    if (result.kind === "candidates") {
-      expect(result.candidates.length).toBe(1)
-      expect(result.candidates[0].id).toBe("hh-3")
-    }
-  })
-
-  it("returns candidates when same name appears in multiple households", () => {
-    const ambiguousMembers: HouseholdMember[] = [
-      { id: "m-10", household_id: "hh-1", first_name: "MARIA", last_name: "SANTOS" },
-      { id: "m-11", household_id: "hh-2", first_name: "MARIA", last_name: "SANTOS" },
-    ]
-    const resident: ResidentInfo = { first_name: "MARIA", last_name: "SANTOS", barangay_code: "0105503021" }
-    const result = matchHousehold(resident, ambiguousMembers, households)
-    expect(result.kind).toBe("candidates")
-  })
-
-  it("filters members by barangay_code via household filter", () => {
-    const resident: ResidentInfo = { first_name: "maria", last_name: "santos", barangay_code: "9999999999" }
-    const result = matchHousehold(resident, members, households)
-    expect(result).toEqual({ kind: "candidates", candidates: [] })
+  it('ships exactly the three curated historical demo incidents', () => {
+    expect(HISTORICAL_INCIDENTS.map(item => item.historicalEventName)).toEqual([
+      'Typhoon Yolanda / Haiyan',
+      'Tropical Storm Sendong / Washi',
+      '2013 Bohol Earthquake',
+    ])
   })
 })
 ```
 
-- [ ] **Step 6: Run tests to verify they fail**
+- [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm vitest run`
-Expected: FAIL — `Cannot find module '@/lib/matcher'`
+Run: `npm run test:unit -- src/features/demo/historical-selectors.test.ts`
+Expected: FAIL with module resolution or missing file errors for `./historical-selectors` and `./historical-incidents`
 
-- [ ] **Step 7: Implement matcher**
+- [ ] **Step 3: Write the minimal implementation by copying the worktree modules**
 
-Create `src/lib/matcher.ts`:
 ```ts
-import type { Household, HouseholdMember, ResidentInfo } from "./types"
+// src/features/demo/historical-incidents.ts
+export type HistoricalIncidentMeta = {
+  campaignId: string
+  historicalEventName: string
+  regionCode: string
+  provinceCode: string
+  municipalityCode: string
+  barangayCodes: string[]
+  barangayLabel: string
+  historicalAffectedPeople: number
+  historicalAffectedFamilies: number
+  displacedPeople: number
+  displacedFamilies: number
+  evacuationCenters: number
+  partiallyDamagedHouses: number
+  totallyDamagedHouses: number
+  neededSupplies: Array<{ label: string; quantity: string }>
+  ereportReportType: 'red_tape' | 'accident' | 'fire'
+  ereportSubject: string
+  ereportMessage: string
+}
 
-export type MatchResult =
-  | { kind: "match"; householdId: string }
-  | { kind: "candidates"; candidates: Household[] }
+export const HISTORICAL_INCIDENTS: HistoricalIncidentMeta[] = [
+  {
+    campaignId: 'a1000000-0000-0000-0000-000000000001',
+    historicalEventName: 'Typhoon Yolanda / Haiyan',
+    regionCode: '080000000',
+    provinceCode: '080370000',
+    municipalityCode: '0803747000',
+    barangayCodes: ['0803747001', '0803747010'],
+    barangayLabel: 'Tacloban City, Leyte',
+    historicalAffectedPeople: 612,
+    historicalAffectedFamilies: 128,
+    displacedPeople: 284,
+    displacedFamilies: 61,
+    evacuationCenters: 4,
+    partiallyDamagedHouses: 95,
+    totallyDamagedHouses: 37,
+    neededSupplies: [
+      { label: 'Family food packs', quantity: '384 packs' },
+      { label: 'Potable water', quantity: '9,180 L/day' },
+      { label: 'Shelter repair kits', quantity: '132 kits' },
+    ],
+    ereportReportType: 'red_tape',
+    ereportSubject: 'Typhoon Yolanda assistance request - Tacloban City',
+    ereportMessage: 'Reporting household impacts and priority relief needs after Typhoon Yolanda in Tacloban City, Leyte.',
+  },
+]
+```
 
-export function matchHousehold(
-  resident: ResidentInfo,
-  members: HouseholdMember[],
-  households: Household[]
-): MatchResult {
-  const barangayHouseholds = households.filter((h) => h.barangay_code === resident.barangay_code)
-  const barangayHouseholdIds = new Set(barangayHouseholds.map((h) => h.id))
+```ts
+// src/features/demo/historical-selectors.ts
+import type { Campaign, Dashboard } from '@/shared'
+import { HISTORICAL_INCIDENTS, type HistoricalIncidentMeta } from './historical-incidents'
 
-  const barangayMembers = members.filter((m) => barangayHouseholdIds.has(m.household_id))
+export type LguIncidentRow = {
+  id: string
+  disaster: string
+  happenedOn: string
+  locationLabel: string
+  status: Campaign['status']
+  historicalAffectedPeople: number
+  assessmentCheckIns: number
+  unresolved: number
+  visited: number
+  resolved: number
+  neededSupplies: HistoricalIncidentMeta['neededSupplies']
+  ereportReportType: HistoricalIncidentMeta['ereportReportType']
+}
 
-  const matchingMembers = barangayMembers.filter(
-    (m) =>
-      m.last_name.toUpperCase() === resident.last_name.toUpperCase() &&
-      m.first_name.toUpperCase() === resident.first_name.toUpperCase()
-  )
+export function getHistoricalIncidentMeta(campaignId: string): HistoricalIncidentMeta | null {
+  return HISTORICAL_INCIDENTS.find(item => item.campaignId === campaignId) ?? null
+}
 
-  const matchedHouseholdIds = new Set(matchingMembers.map((m) => m.household_id))
+export function getCampaignEReportDefaults(campaignId: string) {
+  const meta = getHistoricalIncidentMeta(campaignId)
+  if (!meta) return null
 
-  if (matchedHouseholdIds.size === 1) {
-    return { kind: "match", householdId: matchedHouseholdIds.values().next().value! }
+  return {
+    regionCode: meta.regionCode,
+    provinceCode: meta.provinceCode,
+    municipalityCode: meta.municipalityCode,
+    barangayCode: meta.barangayCodes[0],
+    reportType: meta.ereportReportType,
+    subject: meta.ereportSubject,
+    message: meta.ereportMessage,
   }
-
-  if (matchedHouseholdIds.size > 1) {
-    const candidates = barangayHouseholds.filter((h) => matchedHouseholdIds.has(h.id))
-    return { kind: "candidates", candidates }
-  }
-
-  if (matchedHouseholdIds.size === 0) {
-    return { kind: "candidates", candidates: barangayHouseholds }
-  }
-
-  return { kind: "candidates", candidates: barangayHouseholds }
 }
 ```
 
-- [ ] **Step 8: Run tests to verify they pass**
+Implementation note: copy the complete file contents from the worktree versions, not just the abbreviated snippet above.
 
-Run: `pnpm vitest run`
-Expected: All 6 tests PASS
+- [ ] **Step 4: Run the focused test to verify it passes**
 
-- [ ] **Step 9: Commit**
+Run: `npm run test:unit -- src/features/demo/historical-selectors.test.ts`
+Expected: PASS for the copied selector tests
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/lib/types.ts src/lib/matcher.ts src/__tests__/matcher.test.ts vitest.config.ts package.json pnpm-lock.yaml tsconfig.app.json
-git commit -m "feat: add shared types, HouseholdMatcher, and vitest tests"
+git add src/features/demo/historical-incidents.ts src/features/demo/historical-selectors.ts src/features/demo/historical-selectors.test.ts
+git commit -m "feat: sync historical demo selectors"
 ```
+

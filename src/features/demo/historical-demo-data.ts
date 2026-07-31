@@ -1,6 +1,6 @@
 import type { Campaign, CampaignQuestion, CheckIn, CheckInAnswer, HandaData } from '@/shared'
 
-const DEMO_CAMPAIGNS: Campaign[] = [
+export const DEMO_CAMPAIGNS: Campaign[] = [
   {
     id: 'a1000000-0000-0000-0000-000000000001',
     name: 'Typhoon Yolanda Rapid Assessment',
@@ -42,7 +42,7 @@ const DEMO_CAMPAIGNS: Campaign[] = [
   },
 ]
 
-const DEMO_QUESTIONS: CampaignQuestion[] = [
+export const DEMO_QUESTIONS: CampaignQuestion[] = [
   { id: 'b1000000-0000-0000-0000-000000000001', campaign_id: 'a1000000-0000-0000-0000-000000000001', question_text: 'Is your home heavily damaged or unsafe to occupy?', need_category: 'Shelter', display_order: 0 },
   { id: 'b1000000-0000-0000-0000-000000000002', campaign_id: 'a1000000-0000-0000-0000-000000000001', question_text: 'Does your household need food or clean drinking water?', need_category: 'Food or water', display_order: 1 },
   { id: 'b1000000-0000-0000-0000-000000000003', campaign_id: 'a1000000-0000-0000-0000-000000000001', question_text: 'Does anyone in your household need medical attention?', need_category: 'Medical', display_order: 2 },
@@ -137,7 +137,7 @@ const DEMO_CASES: DemoCaseTemplate[] = [
   }),
 ]
 
-const DEMO_CHECK_INS: CheckIn[] = DEMO_CASES.map((entry) => ({
+export const DEMO_CHECK_INS: CheckIn[] = DEMO_CASES.map((entry) => ({
   id: `c1000000-0000-0000-0000-${entry.id.toString().padStart(12, '0')}`,
   campaign_id: entry.campaignId,
   name: entry.name,
@@ -147,14 +147,14 @@ const DEMO_CHECK_INS: CheckIn[] = DEMO_CASES.map((entry) => ({
   updated_at: DEMO_DATE,
 }))
 
-const DEMO_ANSWERS: CheckInAnswer[] = DEMO_CASES.flatMap((entry) => {
+export const DEMO_ANSWERS: CheckInAnswer[] = DEMO_CASES.flatMap((entry) => {
   const questionIds = DEMO_QUESTIONS
     .filter((question) => question.campaign_id === entry.campaignId)
     .sort((a, b) => a.display_order - b.display_order)
     .map((question) => question.id)
 
   return questionIds.map((questionId, index) => ({
-    id: `d1000000-0000-0000-0000-${`${entry.id.toString().padStart(10, '0')}${index + 1}`}`,
+    id: `d1000000-0000-0000-0000-${`${entry.id.toString().padStart(11, '0')}${index + 1}`}`,
     check_in_id: `c1000000-0000-0000-0000-${entry.id.toString().padStart(12, '0')}`,
     question_id: questionId,
     answer: entry.answers[index] ?? 'no',

@@ -322,22 +322,31 @@
     display: grid;
     place-items: center;
     padding: 16px;
-    background: rgba(15, 23, 42, 0.5);
-    backdrop-filter: blur(4px);
-    z-index: 50;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(6px);
+    z-index: 60;
     animation: fadeIn 0.15s ease-out;
   }
 
   .modal-card {
-    width: min(640px, 100%);
-    max-height: min(800px, 90dvh);
-    padding: 28px;
-    border-radius: var(--radius-xl);
+    width: min(540px, 92vw);
+    max-height: min(760px, 86dvh);
+    padding: 24px;
+    border-radius: 24px;
     background: #ffffff;
     border: 1px solid var(--line);
-    box-shadow: var(--modal-shadow);
+    box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.22);
     overflow-y: auto;
     animation: scaleUp 0.15s ease-out;
+  }
+
+  @media (max-width: 640px) {
+    .modal-card {
+      width: min(92vw, 390px);
+      padding: 20px;
+      border-radius: 24px;
+      max-height: 85dvh;
+    }
   }
 
   /* Toast Notifications */
@@ -798,12 +807,12 @@
   }
 
   @keyframes scaleUp {
-    from { opacity: 0; transform: scale(0.96); }
-    to { opacity: 1; transform: scale(1); }
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
   }
 
   @keyframes slideUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
   }
 }

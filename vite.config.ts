@@ -14,12 +14,12 @@ export default defineConfig({
   server: {
     proxy: {
       "/api/egov-ai": {
-        target: "https://hackathon-sso.e.gov.ph",
+        target: "https://egov-ai-core-ws.oueg.info",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/egov-ai/, "/api/v1/egov/integration"),
       },
       "/api/ereport": {
-        target: "https://hackathon-sso.e.gov.ph",
+        target: "https://stg-ereport-ws.oueg.info",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/ereport/, "/api/integration"),
       },

@@ -1,16 +1,9 @@
 import type { DemoIdentity, EgovProfile } from "./types"
+import { supabase } from "@/lib/supabase"
 
 export type { DemoIdentity }
 
-const BASE_URL = import.meta.env.VITE_EGOV_SSO_BASE_URL as string | undefined
-const EXCHANGE_CODE_PATH = import.meta.env.VITE_EGOV_SSO_EXCHANGE_CODE_PATH as string | undefined
-const PARTNER_CODE = import.meta.env.VITE_EGOV_SSO_PARTNER_CODE as string | undefined
-const PARTNER_SECRET = import.meta.env.VITE_EGOV_SSO_PARTNER_SECRET as string | undefined
 const USE_MOCK = import.meta.env.VITE_EGOV_SSO_USE_MOCK !== "false"
-
-type ExchangeCodeResponse = { exchange_code?: string; data?: { exchange_code?: string } }
-type AccessTokenResponse = { access_token?: string; data?: { access_token?: string } }
-type SSOAuthenticationResponse = { data?: EgovProfile }
 
 const MOCK_PROFILES: Record<DemoIdentity, EgovProfile> = {
   josie: {
@@ -123,67 +116,15 @@ const MOCK_PROFILES: Record<DemoIdentity, EgovProfile> = {
   },
 }
 
-async function generateExchangeCode(): Promise<string> {
-  if (!BASE_URL || !PARTNER_CODE) throw new Error("SSO base URL or partner code not configured")
-
-  const endpoint = new URL(EXCHANGE_CODE_PATH ?? "/api/exchange-code", BASE_URL)
-  endpoint.searchParams.set("partner_code", PARTNER_CODE)
-
-  const getRes = await fetch(endpoint, { method: "GET" })
-  if (getRes.ok) {
-    const data = await getRes.json() as ExchangeCodeResponse
-    const exchangeCode = data.exchange_code ?? data.data?.exchange_code
-    if (exchangeCode) return exchangeCode
-    throw new Error("Exchange code missing from response")
-  }
-
-  const postRes = await fetch(new URL(EXCHANGE_CODE_PATH ?? "/api/exchange-code", BASE_URL), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ partner_code: PARTNER_CODE }),
-  })
-  if (!postRes.ok) {
-    throw new Error(`Exchange code failed: GET ${getRes.status}, POST ${postRes.status}`)
-  }
-
-  const postData = await postRes.json() as ExchangeCodeResponse
-  const exchangeCode = postData.exchange_code ?? postData.data?.exchange_code
-  if (!exchangeCode) throw new Error("Exchange code missing from response")
-  return exchangeCode
+function requireSupabase() {
+  if (!supabase) throw new Error("Supabase client not configured")
+  return supabase
 }
 
-async function generateAccessToken(exchangeCode: string): Promise<string> {
-  if (!BASE_URL || !PARTNER_CODE || !PARTNER_SECRET) throw new Error("SSO credentials not configured")
-  const res = await fetch(`${BASE_URL}/api/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      exchange_code: exchangeCode,
-      scope: "SSO_AUTHENTICATION",
-      partner_code: PARTNER_CODE,
-      partner_secret: PARTNER_SECRET,
-    }),
-  })
-  if (!res.ok) throw new Error(`Token exchange failed: ${res.status}`)
-  const data = await res.json() as AccessTokenResponse
-  const accessToken = data.access_token ?? data.data?.access_token
-  if (!accessToken) throw new Error("Access token missing from response")
-  return accessToken
-}
-
-async function ssoAuthentication(accessToken: string): Promise<EgovProfile> {
-  if (!BASE_URL) throw new Error("SSO base URL not configured")
-  const res = await fetch(`${BASE_URL}/api/partner/sso_authentication`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-  })
-  if (!res.ok) throw new Error(`SSO authentication failed: ${res.status}`)
-  const json = await res.json() as SSOAuthenticationResponse
-  if (!json.data) throw new Error("SSO profile missing from response")
-  return json.data
+function getExchangeCodeFromUrl(): string | null {
+  if (typeof window === "undefined") return null
+  const params = new URLSearchParams(window.location.search)
+  return params.get("exchange_code")
 }
 
 export async function runSSO(identity?: DemoIdentity): Promise<EgovProfile> {
@@ -195,9 +136,15 @@ export async function runSSO(identity?: DemoIdentity): Promise<EgovProfile> {
     console.log("[SSO MOCK] access_token:", mockAccessToken)
     return MOCK_PROFILES[identity ?? "josie"]
   }
-  const exchangeCode = await generateExchangeCode()
-  const accessToken = await generateAccessToken(exchangeCode)
-  return ssoAuthentication(accessToken)
+  const exchangeCode = getExchangeCodeFromUrl()
+  const { data, error } = await requireSupabase().functions.invoke("egov", {
+    body: {
+      action: "sso-profile",
+      payload: exchangeCode ? { exchange_code: exchangeCode } : {},
+    },
+  })
+  if (error) throw error
+  return data as EgovProfile
 }
 
 export { MOCK_PROFILES }
