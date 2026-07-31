@@ -11,4 +11,18 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    proxy: {
+      "/api/egov-ai": {
+        target: "https://hackathon-sso.e.gov.ph",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/egov-ai/, "/api/v1/egov/integration"),
+      },
+      "/api/ereport": {
+        target: "https://hackathon-sso.e.gov.ph",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/ereport/, "/api/integration"),
+      },
+    },
+  },
 })
