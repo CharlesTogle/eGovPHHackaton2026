@@ -170,7 +170,6 @@ export function DisasterReportForm({
       setIsSubmitting(false)
     }
   }
-
   if (!isOpen) return null
 
   return (

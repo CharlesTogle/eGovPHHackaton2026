@@ -250,12 +250,12 @@ export function useHandaStore() {
     supabaseDb.deleteQuestion(questionId)
   }, [])
 
-  const updateQuestion = useCallback((id: string, question_text: string, need_category: string) => {
+  const updateQuestion = useCallback(async (questionId: string, question_text: string, need_category: string) => {
     setData(d => ({
       ...d,
-      questions: d.questions.map(q => q.id === id ? { ...q, question_text, need_category } : q)
+      questions: d.questions.map(q => q.id === questionId ? { ...q, question_text, need_category } : q),
     }))
-    supabaseDb.updateQuestionDb(id, { question_text, need_category })
+    await supabaseDb.updateQuestionDb(questionId, { question_text, need_category })
   }, [])
 
   const updateCampaignStatus = useCallback(async (campaignId: string, status: CampaignStatus) => {
