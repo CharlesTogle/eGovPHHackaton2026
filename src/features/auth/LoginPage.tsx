@@ -159,7 +159,7 @@ export function LoginPage() {
           <img src="/ehanda-logo.png" alt="eHANDA" className="h-8 sm:h-10 w-auto object-contain" />
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-          HANDA Disaster Management Portal
+          eHANDA Disaster Management Portal
         </h1>
         <p className="text-xs sm:text-sm text-slate-600 mt-1">
           Hazard Assessment and Needs Determination Architecture integrated with eGovPH Super App
@@ -176,7 +176,7 @@ export function LoginPage() {
         {step === "input" && mode === "standard" && (
           <div className="p-6 sm:p-8 flex flex-col gap-5">
             <div className="text-center pb-3 border-b border-slate-200">
-              <h2 className="text-base font-bold text-slate-900">Sign in with eGovPH</h2>
+              <h2 className="text-base font-bold text-slate-900">Sign in to eHANDA</h2>
               <p className="text-xs text-slate-500 mt-1">
                 {authMethod === "mobile"
                   ? "Enter your registered Philippine mobile number to receive an SMS one-time password."
@@ -229,7 +229,7 @@ export function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading || (authMethod === "mobile" ? !mobileNumber.trim() : !emailInput.trim())}
-                className="w-full py-3 bg-[var(--blue-primary)] hover:bg-[var(--blue-hover)] active:bg-[var(--blue-deep)] text-white font-semibold text-sm rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[var(--blue-primary)] hover:bg-[var(--blue-hover)] active:bg-[var(--blue-deep)] text-white font-semibold text-sm rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isLoading
                   ? "Processing..."
@@ -244,7 +244,7 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={() => setAuthMethod(authMethod === "mobile" ? "email" : "mobile")}
-                className="text-[var(--blue-primary)] hover:underline font-semibold"
+                className="text-[var(--blue-primary)] hover:underline font-semibold cursor-pointer"
               >
                 {authMethod === "mobile" ? "Sign in using Email Address instead" : "Sign in using Mobile Number instead"}
               </button>
@@ -257,18 +257,14 @@ export function LoginPage() {
               </span>
             </div>
 
-            {/* eGovPH Demo Selection Button */}
+            {/* Sign in with eGovPH SSO Button (styled like Google/FB SSO button) */}
             <button
               type="button"
               onClick={() => setMode("demo")}
-              className="w-full py-3 px-4 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-[var(--blue-primary)] rounded-xl transition-all shadow-xs flex items-center justify-between group"
+              className="w-full py-3 px-4 bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-300 hover:border-slate-400 rounded-xl transition-all shadow-xs hover:shadow-sm active:scale-[0.99] flex items-center justify-center gap-3 font-semibold text-sm text-slate-700 hover:text-slate-900 group cursor-pointer"
             >
-              <div className="flex items-center gap-3">
-                <img src="/egovph-logo.png" alt="eGovPH" className="h-7 w-auto object-contain" />
-              </div>
-              <span className="text-xs font-bold bg-[var(--blue-primary)] group-hover:bg-[var(--blue-hover)] text-white px-3.5 py-1.5 rounded-lg transition-colors shadow-xs">
-                Demo
-              </span>
+              <img src="/egovph-logo.png" alt="eGovPH" className="h-6 w-auto object-contain" />
+              <span>Sign in with eGovPH</span>
             </button>
           </div>
         )}
@@ -276,20 +272,20 @@ export function LoginPage() {
         {/* Step 1 (Demo Mode): Two-Panel Selection */}
         {step === "input" && mode === "demo" && (
           <div className="flex flex-col">
-            {/* Header bar aligned with light eGov/HANDA theme */}
+            {/* Header bar aligned with light eGov/eHANDA theme */}
             <div className="bg-[var(--blue-soft)] border-b border-slate-200 px-6 py-4 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-bold text-slate-900">
-                  eGovPH Demo Accounts & Integration Roles
+                  eGovPH Single Sign-On (SSO)
                 </h2>
-                <p className="text-[11px] text-slate-600 mt-0.5">Select a pre-configured role profile to evaluate platform capabilities.</p>
+                <p className="text-[11px] text-slate-600 mt-0.5">Select your authorized profile to sign in with eGovPH.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setMode("standard")}
-                className="text-xs bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-lg transition-all shadow-xs"
+                className="text-xs bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-lg transition-all shadow-xs cursor-pointer"
               >
-                Back to Standard Login
+                Back to Sign In
               </button>
             </div>
 
@@ -307,7 +303,7 @@ export function LoginPage() {
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                HANDA Management
+                eHANDA Management
               </button>
               <button
                 type="button"
@@ -327,7 +323,7 @@ export function LoginPage() {
 
             <div className="p-6 md:p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* LEFT PANEL: HANDA Management */}
+                {/* LEFT PANEL: eHANDA Management */}
                 <div
                   className={`flex flex-col gap-3 p-4 rounded-xl border transition-all ${
                     activeTab === "handa" || window.innerWidth >= 768
@@ -338,7 +334,7 @@ export function LoginPage() {
                   <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                     <div>
                       <h2 className="text-sm font-bold text-slate-900">
-                        HANDA System Access
+                        eHANDA System Access
                       </h2>
                       <p className="text-[11px] text-slate-500">LGU, Barangay, & Developer Consoles</p>
                     </div>
