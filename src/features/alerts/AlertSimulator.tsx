@@ -48,7 +48,14 @@ export function AlertSimulator({ onAlertProcessed, barangayCode }: AlertSimulato
   }
 
   const renderScenarioIcon = (id: string) => {
-    if (id.includes('yolanda') || id.includes('typhoon')) {
+    if (id.includes('fire')) {
+      return (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 3z"/>
+        </svg>
+      )
+    }
+    if (id.includes('typhoon') || id.includes('maymay')) {
       return (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0646f4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/>
@@ -57,7 +64,7 @@ export function AlertSimulator({ onAlertProcessed, barangayCode }: AlertSimulato
         </svg>
       )
     }
-    if (id.includes('ondoy') || id.includes('flood') || id.includes('rain')) {
+    if (id.includes('flood') || id.includes('habagat') || id.includes('rain') || id.includes('dolphin')) {
       return (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
@@ -66,7 +73,7 @@ export function AlertSimulator({ onAlertProcessed, barangayCode }: AlertSimulato
         </svg>
       )
     }
-    if (id.includes('earthquake')) {
+    if (id.includes('earthquake') || id.includes('maasim')) {
       return (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>

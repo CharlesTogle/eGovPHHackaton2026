@@ -54,7 +54,7 @@ export function HandaBottomSheet({ state, onStateChange, title, subtitle, childr
         onPointerUp={handlePointerUp}
       >
         <span className="handa-sheet__grabber" aria-hidden="true" />
-        <div className="handa-sheet__eyebrow">HANDA</div>
+        <div className="handa-sheet__eyebrow">eHANDA</div>
         <h2 id={titleId} className="handa-sheet__title">{title}</h2>
         <p className="handa-sheet__subtitle">{subtitle}</p>
       </div>

@@ -408,7 +408,7 @@ export function DeveloperConsole() {
             {/* Quick API Documentation Teaser */}
             <div className="bg-[var(--blue-soft)] border border-blue-200 p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
-                <h3 className="font-bold text-base text-slate-900">Explore eReport & HANDA API Endpoints</h3>
+                <h3 className="font-bold text-base text-slate-900">Explore eReport & eHANDA API Endpoints</h3>
                 <p className="text-xs text-slate-600 mt-1 max-w-xl">
                   Query barangay disaster aggregates, check-in queue responses, eReport geographic datasets, and dialect translations programmatically.
                 </p>

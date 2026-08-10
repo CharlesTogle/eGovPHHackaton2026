@@ -1,8 +1,11 @@
 import type { SmsReport } from './types'
 
 export async function parseSmsReport(smsText: string): Promise<SmsReport | null> {
-  const apiKey = (import.meta.env.VITE_EGOV_AI_ACCESS_CODE as string)
-    || (import.meta.env.VITE_GEMINI_API_KEY as string)
+  const apiKey = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_GEMINI_API_KEY)
+    || (typeof process !== 'undefined' && process?.env?.VITE_GEMINI_API_KEY)
+    || (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_EGOV_AI_ACCESS_CODE)
+    || (typeof process !== 'undefined' && process?.env?.VITE_EGOV_AI_ACCESS_CODE)
+    || ''
 
   if (!apiKey) {
     console.warn('[SMS Parser] No API key found. Falling back to simple heuristic parsing.')

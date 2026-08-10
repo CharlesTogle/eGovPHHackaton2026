@@ -49,8 +49,11 @@ async function tryLLMGeneration(
   headline: string,
 ): Promise<DraftQuestion[] | null> {
   // Check for available API key
-  const apiKey = (import.meta.env.VITE_EGOV_AI_ACCESS_CODE as string)
-    || (import.meta.env.VITE_GEMINI_API_KEY as string)
+  const apiKey = (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_GEMINI_API_KEY)
+    || (typeof process !== 'undefined' && process?.env?.VITE_GEMINI_API_KEY)
+    || (typeof import.meta !== 'undefined' && import.meta?.env?.VITE_EGOV_AI_ACCESS_CODE)
+    || (typeof process !== 'undefined' && process?.env?.VITE_EGOV_AI_ACCESS_CODE)
+    || ''
 
   if (!apiKey) {
     console.log('[AI Draft] No API key found, using RDANA template fallback')

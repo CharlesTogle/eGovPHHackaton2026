@@ -31,7 +31,7 @@ const FILIPINO_FALLBACK_COPY: Record<string, string> = {
   hide: 'Itago',
   submittedTitle: 'Naisumite na ang check-in',
   submittedBody: 'Manatiling nakaabang sa pinakabagong update mula sa inyong LGU.',
-  aiTitle: 'eGov AI para sa HANDA',
+  aiTitle: 'eGov AI para sa eHANDA',
 }
 
 function toFilipinoCampaignTitle(title: string) {
@@ -140,7 +140,7 @@ export function ResidentConsole() {
       hide: 'Hide',
       submittedTitle: 'Check-in submitted',
       submittedBody: 'Your case stays pinned here until the LGU marks it resolved.',
-      aiTitle: 'eGov AI for HANDA',
+      aiTitle: 'eGov AI for eHANDA',
     }
 
     residentQuestions.forEach((question, index) => {
@@ -230,7 +230,7 @@ export function ResidentConsole() {
           <div>
             <p className="resident-mobile-eyebrow">Mabuhay, {profile.first_name.toUpperCase()}</p>
             <h1>Welcome to eGovPH</h1>
-            <p>HANDA is the active demo service for your disaster response check-in.</p>
+            <p>eHANDA is the active demo service for your disaster response check-in.</p>
           </div>
           <button type="button" className="pill-btn ghost" onClick={logout}>Sign out</button>
         </section>
@@ -257,11 +257,11 @@ export function ResidentConsole() {
         <section className="resident-mobile-handa-card section-card">
           <div>
             <p className="resident-mobile-eyebrow">Active Demo</p>
-            <h2>{activeCampaign ? activeCampaign.name : 'HANDA Disaster Check-In'}</h2>
+            <h2>{activeCampaign ? activeCampaign.name : 'eHANDA Disaster Check-In'}</h2>
             <p>
               {activeCampaign
-                ? `${activeCampaign.disaster_type} on ${activeCampaign.disaster_date}. Open HANDA to report needs, translate the alert, and ask eGov AI.`
-                : 'No active campaign right now. The layout stays ready for the next HANDA alert.'}
+                ? `${activeCampaign.disaster_type} on ${activeCampaign.disaster_date}. Open eHANDA to report needs, translate the alert, and ask eGov AI.`
+                : 'No active campaign right now. The layout stays ready for the next eHANDA alert.'}
             </p>
           </div>
           <button
@@ -270,7 +270,7 @@ export function ResidentConsole() {
             onClick={() => setSheetState('expanded')}
             disabled={!shouldShowHandaSheet}
           >
-            Open HANDA
+            Open eHANDA
           </button>
         </section>
 
@@ -298,7 +298,7 @@ export function ResidentConsole() {
             className="resident-mobile-nav-center"
             onClick={() => setSheetState('expanded')}
           >
-            HANDA
+            eHANDA
           </button>
           <button type="button" className="resident-mobile-nav-item">
             <span>☰</span>
@@ -392,14 +392,14 @@ export function ResidentConsole() {
                   ))}
                 </div>
                 <button type="button" className="big-btn primary" onClick={handleSubmit}>
-                  Submit to HANDA
+                  Submit to eHANDA
                 </button>
               </section>
             )}
 
             <section className="resident-sheet-card">
               <div className="resident-sheet-section-title">
-                <h3>{text('aiTitle', 'eGov AI for HANDA')}</h3>
+                <h3>{text('aiTitle', 'eGov AI for eHANDA')}</h3>
               </div>
               <CitizenHelpChat embedded />
             </section>
