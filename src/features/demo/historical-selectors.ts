@@ -5,9 +5,18 @@ export type LguIncidentRow = {
   id: string
   disaster: string
   happenedOn: string
+  cityName: string
+  municipalityCode: string
+  barangayCode: string
   locationLabel: string
   status: Campaign['status']
   historicalAffectedPeople: number
+  historicalAffectedFamilies: number
+  displacedPeople: number
+  displacedFamilies: number
+  evacuationCenters: number
+  partiallyDamagedHouses: number
+  totallyDamagedHouses: number
   assessmentCheckIns: number
   unresolved: number
   visited: number
@@ -53,9 +62,18 @@ export function buildLguIncidentRows(input: {
         id: campaign.id,
         disaster: meta.historicalEventName,
         happenedOn: campaign.disaster_date,
+        cityName: meta.cityName,
+        municipalityCode: meta.municipalityCode,
+        barangayCode: meta.barangayCodes[0] ?? campaign.barangay_code,
         locationLabel: meta.barangayLabel,
         status: campaign.status,
         historicalAffectedPeople: meta.historicalAffectedPeople,
+        historicalAffectedFamilies: meta.historicalAffectedFamilies,
+        displacedPeople: meta.displacedPeople,
+        displacedFamilies: meta.displacedFamilies,
+        evacuationCenters: meta.evacuationCenters,
+        partiallyDamagedHouses: meta.partiallyDamagedHouses,
+        totallyDamagedHouses: meta.totallyDamagedHouses,
         assessmentCheckIns: dashboard.affectedCount,
         unresolved: dashboard.unresolvedCount,
         visited,
@@ -65,6 +83,7 @@ export function buildLguIncidentRows(input: {
       }
     })
     .filter((row): row is LguIncidentRow => row !== null)
+    .sort((a, b) => new Date(b.happenedOn).getTime() - new Date(a.happenedOn).getTime())
 }
 
 export function summarizeNeededSupplies(rows: LguIncidentRow[]): NeededSupplySummary[] {

@@ -309,11 +309,13 @@ export const PSA_BARANGAYS: Record<string, BarangayItem[]> = {
   "0701200001": [
     { id: "070120000101", region_code: "070000000", province_code: "070120000", municipality_code: "0701200001", name: "Poblacion I" },
     { id: "070120000102", region_code: "070000000", province_code: "070120000", municipality_code: "0701200001", name: "Cogon" },
+    { id: "070120000103", region_code: "070000000", province_code: "070120000", municipality_code: "0701200001", name: "Bool" },
   ],
   // Tacloban City (0803747000)
   "0803747000": [
-    { id: "0803747001", region_code: "080000000", province_code: "080370000", municipality_code: "0803747000", name: "Barangay 1 (Poblacion)" },
-    { id: "0803747010", region_code: "080000000", province_code: "080370000", municipality_code: "0803747000", name: "Abucay" },
+    { id: "0803747001", region_code: "080000000", province_code: "080370000", municipality_code: "0803747000", name: "Brgy. 83 (San Jose)" },
+    { id: "0803747010", region_code: "080000000", province_code: "080370000", municipality_code: "0803747000", name: "Brgy. 84 (Sagkahan)" },
+    { id: "0803747020", region_code: "080000000", province_code: "080370000", municipality_code: "0803747000", name: "Brgy. 88 (Anibong)" },
   ],
   // Zamboanga City (0907332000)
   "0907332000": [
@@ -324,6 +326,7 @@ export const PSA_BARANGAYS: Record<string, BarangayItem[]> = {
   "1004305000": [
     { id: "1004305001", region_code: "100000000", province_code: "100430000", municipality_code: "1004305000", name: "Carmen" },
     { id: "1004305010", region_code: "100000000", province_code: "100430000", municipality_code: "1004305000", name: "Lapasan" },
+    { id: "1004305020", region_code: "100000000", province_code: "100430000", municipality_code: "1004305000", name: "Macasandig" },
   ],
   // Davao City (1102402000)
   "1102402000": [

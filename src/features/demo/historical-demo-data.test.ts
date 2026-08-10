@@ -25,12 +25,9 @@ describe('historical demo data fallback', () => {
       alerts: [{ id: 'alert-1' }],
     } as never)
 
-    expect(merged.campaigns.map((campaign) => campaign.id)).toEqual([
-      'a0000000-0000-0000-0000-000000000001',
-      'a1000000-0000-0000-0000-000000000001',
-      'a1000000-0000-0000-0000-000000000002',
-      'a1000000-0000-0000-0000-000000000003',
-    ])
+    expect(merged.campaigns.map((campaign) => campaign.id)).toContain('a0000000-0000-0000-0000-000000000001')
+    expect(merged.campaigns.map((campaign) => campaign.id)).toContain('a1000000-0000-0000-0000-000000000001')
+    expect(merged.campaigns).toHaveLength(10) // 1 legacy + 9 historical demo campaigns
     expect(merged.questions.length).toBeGreaterThan(0)
     expect(merged.checkIns.length).toBeGreaterThan(0)
     expect(merged.alerts).toHaveLength(1)
@@ -63,16 +60,16 @@ describe('historical demo data fallback', () => {
     expect(merged.campaigns[0].id).toBe('a1000000-0000-0000-0000-000000000001')
   })
 
-  it('ships a larger assessment dataset for demo viewing', () => {
+  it('ships a larger assessment dataset for demo viewing across 9 barangay campaigns', () => {
     const merged = mergeHistoricalDemoData(null)
     const byCampaign = merged.checkIns.reduce<Record<string, number>>((acc, checkIn) => {
       acc[checkIn.campaign_id] = (acc[checkIn.campaign_id] ?? 0) + 1
       return acc
     }, {})
 
-    expect(merged.checkIns.length).toBeGreaterThanOrEqual(300)
-    expect(byCampaign['a1000000-0000-0000-0000-000000000001']).toBeGreaterThanOrEqual(120)
-    expect(byCampaign['a1000000-0000-0000-0000-000000000002']).toBeGreaterThanOrEqual(90)
-    expect(byCampaign['a1000000-0000-0000-0000-000000000003']).toBeGreaterThanOrEqual(80)
+    expect(merged.checkIns.length).toBeGreaterThanOrEqual(400)
+    expect(byCampaign['a1000000-0000-0000-0000-000000000001']).toBeGreaterThanOrEqual(70)
+    expect(byCampaign['a1000000-0000-0000-0000-000000000002']).toBeGreaterThanOrEqual(60)
+    expect(byCampaign['a1000000-0000-0000-0000-000000000003']).toBeGreaterThanOrEqual(50)
   })
 })
