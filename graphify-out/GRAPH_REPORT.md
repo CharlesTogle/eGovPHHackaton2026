@@ -1,16 +1,16 @@
-# Graph Report - eGovPHHackaton2026  (2026-07-31)
+# Graph Report - eGovPHHackaton2026  (2026-08-11)
 
 ## Corpus Check
-- 98 files · ~89,954 words
+- 104 files · ~85,627 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 653 nodes · 779 edges · 70 communities (42 shown, 28 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 6 edges (avg confidence: 0.8)
+- 812 nodes · 1003 edges · 84 communities (56 shown, 28 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 12 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d6e3dce4`
+- Built from commit: `4a19c41d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -72,45 +72,54 @@
 - [[_COMMUNITY_Community 61|Community 61]]
 - [[_COMMUNITY_Community 62|Community 62]]
 - [[_COMMUNITY_Community 63|Community 63]]
+- [[_COMMUNITY_Community 64|Community 64]]
+- [[_COMMUNITY_Community 65|Community 65]]
 - [[_COMMUNITY_Community 66|Community 66]]
 - [[_COMMUNITY_Community 67|Community 67]]
 - [[_COMMUNITY_Community 70|Community 70]]
 - [[_COMMUNITY_Community 71|Community 71]]
 - [[_COMMUNITY_Community 72|Community 72]]
 - [[_COMMUNITY_Community 73|Community 73]]
+- [[_COMMUNITY_Community 75|Community 75]]
+- [[_COMMUNITY_Community 76|Community 76]]
+- [[_COMMUNITY_Community 77|Community 77]]
+- [[_COMMUNITY_Community 78|Community 78]]
+- [[_COMMUNITY_Community 80|Community 80]]
+- [[_COMMUNITY_Community 81|Community 81]]
+- [[_COMMUNITY_Community 82|Community 82]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `compilerOptions` - 21 edges
-2. `db()` - 15 edges
-3. `table()` - 15 edges
+2. `db()` - 16 edges
+3. `table()` - 16 edges
 4. `compilerOptions` - 15 edges
 5. `HANDA Production Infrastructure Plan` - 15 edges
-6. `Endpoints` - 12 edges
-7. `HANDA Residency Check-in & Live Dashboard ΓÇö Data Report` - 12 edges
-8. `useSession()` - 11 edges
-9. `Residency Check-in & Live Barangay Dashboard — Design` - 11 edges
-10. `AlertIngestionResult` - 9 edges
+6. `json()` - 13 edges
+7. `useSession()` - 12 edges
+8. `Endpoints` - 12 edges
+9. `HANDA Residency Check-in & Live Dashboard ΓÇö Data Report` - 12 edges
+10. `processInboundAlert()` - 11 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `AppRouter()` --calls--> `useSession()`  [INFERRED]
   src/App.tsx → src/features/auth/session-context.tsx
-- `LguDashboard()` --calls--> `useSession()`  [INFERRED]
-  src/features/lgu/LguDashboard.tsx → src/features/auth/session-context.tsx
-- `OfficialConsole()` --calls--> `useSession()`  [INFERRED]
-  src/App.tsx → src/features/auth/session-context.tsx
+- `runPipelineTests()` --calls--> `getPresetScenarios()`  [EXTRACTED]
+  scratch/test-full-pipeline.mjs → src/features/alerts/alert-service.ts
+- `runPipelineTests()` --calls--> `processInboundAlert()`  [EXTRACTED]
+  scratch/test-full-pipeline.mjs → src/features/alerts/alert-service.ts
+- `runPipelineTests()` --calls--> `parseSmsReport()`  [EXTRACTED]
+  scratch/test-full-pipeline.mjs → src/features/alerts/sms-parser.ts
 - `DeveloperConsole()` --calls--> `useSession()`  [INFERRED]
   src/features/developer/DeveloperConsole.tsx → src/features/auth/session-context.tsx
-- `ResidentConsole()` --calls--> `useSession()`  [INFERRED]
-  src/features/resident/ResidentConsole.tsx → src/features/auth/session-context.tsx
 
 ## Import Cycles
 - None detected.
 
-## Communities (70 total, 28 thin omitted)
+## Communities (84 total, 28 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.07
-Nodes (40): AccessTokenResponse, BASE_URL, EXCHANGE_CODE_PATH, ExchangeCodeResponse, generateAccessToken(), generateExchangeCode(), MOCK_PROFILES, PARTNER_CODE (+32 more)
+Nodes (43): AccessTokenResponse, BASE_URL, EXCHANGE_CODE_PATH, ExchangeCodeResponse, generateAccessToken(), generateExchangeCode(), getExchangeCodeFromUrl(), MOCK_PROFILES (+35 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.10
@@ -118,7 +127,7 @@ Nodes (19): Authentication, Barangay List by Params, Complaints, Confirm OTP, Da
 
 ### Community 2 - "Community 2"
 Cohesion: 0.07
-Nodes (41): Shell(), ShellProps, SidebarTab, ResidentConsole(), Campaign, CampaignQuestion, CampaignStatus, can() (+33 more)
+Nodes (43): Shell(), ShellProps, SidebarTab, LguDashboard(), ResidentConsole(), Campaign, CampaignQuestion, CampaignStatus (+35 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.08
@@ -150,11 +159,11 @@ Nodes (15): 1. Data And App State Shell, 2. Barangay Official Login And Campaign
 
 ### Community 10 - "Community 10"
 Cohesion: 0.09
-Nodes (43): AlertIngestionResult, getPresetScenarios(), processInboundAlert(), AlertSimulator(), AlertSimulatorProps, CAPAlertInfo, CAPParameter, extractPSGCCodes() (+35 more)
+Nodes (45): AlertIngestionResult, getPresetScenarios(), processInboundAlert(), AlertSimulator(), AlertSimulatorProps, CAPAlertInfo, CAPParameter, extractPSGCCodes() (+37 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.05
-Nodes (41): dependencies, @base-ui/react, class-variance-authority, clsx, @fontsource-variable/jetbrains-mono, @phosphor-icons/react, react, react-dom (+33 more)
+Nodes (43): dependencies, @base-ui/react, class-variance-authority, clsx, @fontsource-variable/jetbrains-mono, @phosphor-icons/react, react, react-dom (+35 more)
 
 ### Community 12 - "Community 12"
 Cohesion: 0.15
@@ -181,8 +190,20 @@ Cohesion: 0.33
 Nodes (4): css, defined, missing, root
 
 ### Community 18 - "Community 18"
-Cohesion: 0.50
-Nodes (3): Expanding the ESLint configuration, React Compiler, React + TypeScript + Vite
+Cohesion: 0.15
+Nodes (16): 1. Login Screen & Access, 2. Role-Based Capabilities, A. Barangay Level (Command Center), B. Citizen/Resident Access (eGov App / Any App), C. LGU Command Center (Parent Dashboard), D. Developer Role (The eHanda Service Ecosystem), D. Developer Role (The Handa Service Ecosystem), eHanda: Disaster Response & Assessment Platform (+8 more)
+
+### Community 19 - "Community 19"
+Cohesion: 0.29
+Nodes (3): FILIPINO_FALLBACK_COPY, PREVIEW_CARDS, QUICK_SERVICES
+
+### Community 27 - "Community 27"
+Cohesion: 0.20
+Nodes (9): Concerns, Controller Verification Follow-Up, Files Changed, Self-Review Notes, Status, Summary of Edits, Task 1 Report, Verification Command(s) (+1 more)
+
+### Community 30 - "Community 30"
+Cohesion: 0.20
+Nodes (9): Concerns, Files Changed, Self-Review Notes, Status, Summary of Edits, Task 3 Completion Report, Task 3 Report, Verification Command(s) (+1 more)
 
 ### Community 45 - "Community 45"
 Cohesion: 0.12
@@ -197,8 +218,8 @@ Cohesion: 0.18
 Nodes (10): Assessments, Barangay, Error Responses, Export CSV, Get Aggregates, Get Assessment, Get Barangay, Get Responses (+2 more)
 
 ### Community 48 - "Community 48"
-Cohesion: 0.18
-Nodes (8): DeveloperApplication, DeveloperApplicationStatus, INCIDENTS, IncidentStatus, IncidentSummary, LguDashboard(), LguTab, MOCK_DEVELOPER_APPLICATIONS
+Cohesion: 0.11
+Nodes (31): AccessTokenResponse, AiAssistantResponse, AiResponseSource, assistant(), confirmOtp(), corsHeaders, CreditBalanceResponse, credits() (+23 more)
 
 ### Community 49 - "Community 49"
 Cohesion: 0.29
@@ -236,37 +257,61 @@ Nodes (14): AI Assistant, AI Generation Endpoints, Authentication, Document Extr
 Cohesion: 0.13
 Nodes (24): BarangayItem, getBarangays(), getEReportToken(), getMunicipalities(), getProvinces(), getRegions(), getReportTypes(), MunicipalityItem (+16 more)
 
+### Community 64 - "Community 64"
+Cohesion: 0.17
+Nodes (9): DEMO_ANSWERS, DEMO_CAMPAIGNS, DEMO_CASES, DEMO_CHECK_INS, DEMO_QUESTIONS, DemoCaseTemplate, hasHistoricalCampaigns(), mergeHistoricalDemoData() (+1 more)
+
+### Community 65 - "Community 65"
+Cohesion: 0.33
+Nodes (3): HandaBottomSheetProps, SheetState, SNAP_TRANSLATE_Y
+
 ### Community 66 - "Community 66"
 Cohesion: 0.22
 Nodes (8): 1. Executive Purpose & Operational Mandate, 2. Official OCD RDANA Form-1 Structure, 3. Data Collection Workflow & Official Cascading, NDRRMC Official RDANA (Rapid Damage Assessment and Needs Analysis) Post-Disaster Reference, SECTION I: General Disaster Profile, SECTION II: Human Impact & Displaced Population, SECTION III: Sectoral Damage & Urgent Needs Clusters, SECTION IV: Local Response Capacity & Augmentation Requests
 
 ### Community 67 - "Community 67"
-Cohesion: 0.29
-Nodes (9): AiAssistantResponse, askAiAssistant(), CreditBalanceResponse, getCreditBalance(), getEgovAiToken(), LanguageCode, queryGeminiAssistant(), translateText() (+1 more)
+Cohesion: 0.19
+Nodes (15): AiAssistantResponse, AiResponseSource, askAiAssistant(), CreditBalanceResponse, getCreditBalance(), getEgovAiToken(), getLiveClientToken(), getLocalFallbackAnswer() (+7 more)
 
 ### Community 71 - "Community 71"
 Cohesion: 0.50
 Nodes (3): Design Principles, Layout & Architecture, Overview
 
+### Community 75 - "Community 75"
+Cohesion: 0.12
+Nodes (17): HISTORICAL_INCIDENTS, HistoricalIncidentMeta, buildLguIncidentRows(), CampaignEReportDefaults, getCampaignEReportDefaults(), getHistoricalIncidentMeta(), LguIncidentRow, NeededSupplySummary (+9 more)
+
+### Community 76 - "Community 76"
+Cohesion: 0.70
+Nodes (4): run(), testIntegrationToken(), testLiveAIWithToken(), testToken()
+
+### Community 81 - "Community 81"
+Cohesion: 0.20
+Nodes (7): DeveloperApplication, DeveloperApplicationStatus, INCIDENTS, IncidentStatus, IncidentSummary, LguTab, MOCK_DEVELOPER_APPLICATIONS
+
+### Community 82 - "Community 82"
+Cohesion: 0.80
+Nodes (4): getLiveClientToken(), run(), testAsk(), testTranslate()
+
 ## Knowledge Gaps
-- **375 isolated node(s):** `buttonVariants`, `$schema`, `style`, `rsc`, `tsx` (+370 more)
+- **442 isolated node(s):** `buttonVariants`, `$schema`, `style`, `rsc`, `tsx` (+437 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **28 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useSession()` connect `Community 0` to `Community 48`, `Community 2`, `Community 59`?**
-  _High betweenness centrality (0.023) - this node is a cross-community bridge._
-- **Why does `OfficialConsole()` connect `Community 2` to `Community 0`?**
-  _High betweenness centrality (0.009) - this node is a cross-community bridge._
-- **Why does `LguDashboard()` connect `Community 48` to `Community 0`?**
-  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+- **Why does `useSession()` connect `Community 0` to `Community 75`, `Community 2`, `Community 59`?**
+  _High betweenness centrality (0.021) - this node is a cross-community bridge._
+- **Why does `OfficialConsole()` connect `Community 75` to `Community 0`, `Community 2`?**
+  _High betweenness centrality (0.010) - this node is a cross-community bridge._
+- **Why does `useHandaStore()` connect `Community 2` to `Community 75`?**
+  _High betweenness centrality (0.008) - this node is a cross-community bridge._
 - **What connects `buttonVariants`, `$schema`, `style` to the rest of the system?**
-  _375 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _442 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
-  _Cohesion score 0.07215686274509804 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06918238993710692 - nodes in this community are weakly interconnected._
 - **Should `Community 1` be split into smaller, more focused modules?**
   _Cohesion score 0.1 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
-  _Cohesion score 0.07088989441930618 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07111756168359942 - nodes in this community are weakly interconnected._
