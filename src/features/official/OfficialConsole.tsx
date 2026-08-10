@@ -401,6 +401,7 @@ export function OfficialConsole() {
           barangay: publishedCampaign.barangay_code,
           municipality: profile.municipality_code ?? '',
           questions,
+          smsRecipients: ['+639702045579'],
         })
         const sms = result.results.find(channel => channel.channel === 'sms')
         const telegram = result.results.find(channel => channel.channel === 'telegram')
