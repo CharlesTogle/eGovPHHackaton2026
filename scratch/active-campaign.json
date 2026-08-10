@@ -1,0 +1,21 @@
+{
+  "campaignName": "Magnitude 7.8 Earthquake — Offshore Maasim, Sarangani Province",
+  "disaster": "Earthquake",
+  "signalLevel": "Tsunami Warning",
+  "barangay": "Poblacion",
+  "municipality": "City Of Alaminos, Pangasinan",
+  "questions": [
+    {
+      "question_text": "Do you have access to electricity?",
+      "need_category": "utilities"
+    },
+    {
+      "question_text": "Is your family short on food supply (less than 3 days)?",
+      "need_category": "food_water"
+    },
+    {
+      "question_text": "Does anyone in your household need medical attention?",
+      "need_category": "medical"
+    }
+  ]
+}

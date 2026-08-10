@@ -365,3 +365,44 @@ export const PSA_BARANGAYS: Record<string, BarangayItem[]> = {
     { id: "1804501001", region_code: "180000000", province_code: "180450000", municipality_code: "1804501000", name: "Barangay 1 (Poblacion)" },
   ],
 }
+
+function displayDatasetName(name: string): string {
+  if (name !== name.toUpperCase()) return name
+  return name
+    .split(' ')
+    .map(word => word ? `${word.charAt(0)}${word.slice(1).toLowerCase()}` : word)
+    .join(' ')
+}
+
+/** Resolve only names present in the bundled PSA reference data. */
+export function lookupNotificationLocation(barangayValue?: string, municipalityValue?: string): string {
+  const barangayInput = barangayValue?.trim() ?? ''
+  const municipalityInput = municipalityValue?.trim() ?? ''
+
+  let barangay: BarangayItem | undefined
+  for (const barangays of Object.values(PSA_BARANGAYS)) {
+    barangay = barangays.find(item => item.id === barangayInput || item.name.toLowerCase() === barangayInput.toLowerCase())
+    if (barangay) break
+  }
+
+  let municipality: MunicipalityItem | undefined
+  for (const municipalities of Object.values(PSA_MUNICIPALITIES)) {
+    municipality = municipalities.find(item => (
+      item.id === municipalityInput || item.name.toLowerCase() === municipalityInput.toLowerCase()
+    ))
+    if (municipality) break
+  }
+
+  if (!municipality && barangay) {
+    for (const municipalities of Object.values(PSA_MUNICIPALITIES)) {
+      municipality = municipalities.find(item => item.id === barangay?.municipality_code)
+      if (municipality) break
+    }
+  }
+
+  const municipalityName = municipality ? displayDatasetName(municipality.name) : ''
+  const barangayName = barangay ? displayDatasetName(barangay.name) : ''
+  if (barangayName && municipalityName) return `${barangayName}, ${municipalityName}`
+  if (municipalityName) return municipalityName
+  return 'Location unavailable'
+}

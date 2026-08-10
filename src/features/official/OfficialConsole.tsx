@@ -7,8 +7,19 @@ import { SmsSimulatorDrawer } from '@/features/alerts'
 import type { AlertIngestionResult } from '@/features/alerts'
 import { getHistoricalIncidentMeta } from '@/features/demo/historical-selectors'
 import { groupCampaignsForDisplay } from './assessment-list'
+import { dispatchAlert } from '@/lib/alert-dispatcher'
+import { lookupLocationNames } from '@/lib/psa-fallback-data'
 
 type DeveloperApplicationStatus = 'pending' | 'accepted' | 'rejected'
+
+export const RDANA_CATEGORY_OPTIONS = [
+  { value: 'shelter', label: 'Shelter / Housing (Section II-A)' },
+  { value: 'food_water', label: 'Food & Water (Section II-B)' },
+  { value: 'medical', label: 'Health / Medical (Section II-C)' },
+  { value: 'livelihood', label: 'Livelihood / Agriculture (Section II-D)' },
+  { value: 'evacuation', label: 'Evacuation & Rescue (Section II-E)' },
+  { value: 'utilities', label: 'Utilities & Power (Section II-F)' },
+] as const
 
 type DeveloperApplication = {
   id: string
@@ -25,7 +36,6 @@ type DeveloperApplication = {
 const DEVELOPER_APPLICATIONS_STORAGE_KEY = 'handa_developer_applications'
 
 const DEFAULT_DEVELOPER_APPLICATIONS: DeveloperApplication[] = [
-  {
     id: 'dev-app-001',
     applicant_name: 'Alyssa Mendoza',
     email: 'alyssa@citydata.ph',
@@ -229,6 +239,7 @@ export function OfficialConsole() {
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
   const [copyFromCampaignId, setCopyFromCampaignId] = useState('')
   const [saving, setSaving] = useState(false)
+  const [dispatching, setDispatching] = useState(false)
   const [isSwitchingAssessment, setIsSwitchingAssessment] = useState(false)
 
   const handleSelectEditCampaign = (c: { id: string; name: string; disaster_type: string; disaster_date: string }) => {
@@ -370,10 +381,36 @@ export function OfficialConsole() {
     if (!pendingAction) return
     const { type, campaignId } = pendingAction
     if (type === 'publish') {
+      const publishedCampaign = data.campaigns.find(c => c.id === campaignId)
+      if (!publishedCampaign) return
+
+      const questions = data.questions
+        .filter(q => q.campaign_id === campaignId)
+        .sort((a, b) => a.display_order - b.display_order)
+
+      setDispatching(true)
       await updateCampaignStatus(campaignId, 'active')
-      showToast('Assessment published!')
       setSelectedCampaignId(campaignId)
       setPendingDraft(null)
+
+      try {
+        const result = await dispatchAlert({
+          campaignName: publishedCampaign.name,
+          disaster: publishedCampaign.disaster_type,
+          signalLevel: `Assessment published ${publishedCampaign.disaster_date}`,
+          barangay: publishedCampaign.barangay_code,
+          municipality: profile.municipality_code ?? '',
+          questions,
+        })
+        const sms = result.results.find(channel => channel.channel === 'sms')
+        const telegram = result.results.find(channel => channel.channel === 'telegram')
+        showToast(`Published. eSMS: ${sms?.sent ?? 0} sent • Telegram: ${telegram?.sent ?? 0} sent`)
+      } catch (error) {
+        console.error('[eHANDA] Publish notification failed:', error)
+        showToast('Assessment published, but notifications could not be sent.')
+      } finally {
+        setDispatching(false)
+      }
     } else if (type === 'close') {
       await updateCampaignStatus(campaignId, 'closed')
       showToast('Assessment closed.')
@@ -1029,12 +1066,18 @@ export function OfficialConsole() {
                                     className="w-full min-h-[38px] rounded-lg px-3 py-1.5 text-xs border border-slate-300 bg-white text-slate-900"
                                     placeholder="Question text"
                                   />
-                                  <input
+                                  <select
                                     value={editQCat}
                                     onChange={e => setEditQCat(e.target.value)}
-                                    className="w-full min-h-[38px] rounded-lg px-3 py-1.5 text-xs border border-slate-300 bg-white text-slate-900"
-                                    placeholder="Need category (e.g. shelter, food_water, medical)"
-                                  />
+                                    className="w-full min-h-[38px] rounded-lg px-3 py-1.5 text-xs border border-slate-300 bg-white text-slate-900 font-medium cursor-pointer"
+                                  >
+                                    <option value="">— Select RDANA Category —</option>
+                                    {RDANA_CATEGORY_OPTIONS.map(cat => (
+                                      <option key={cat.value} value={cat.value}>
+                                        {cat.label}
+                                      </option>
+                                    ))}
+                                  </select>
                                   <div className="flex items-center gap-2 justify-end mt-1">
                                     <button className="pill-btn ghost text-xs py-1 px-3" onClick={() => setEditingQuestionId(null)}>Cancel</button>
                                     <button
@@ -1055,7 +1098,12 @@ export function OfficialConsole() {
                                 <>
                                   <div className="min-w-0 flex-1">
                                     <strong className="text-xs sm:text-sm font-bold text-slate-900 block truncate">{q.question_text}</strong>
-                                    <span className="text-[11px] text-slate-500 font-medium">Category: {q.need_category}</span>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: getNeedCategoryMeta(q.need_category).color }} />
+                                      <span className="text-[11px] text-slate-600 font-medium">
+                                        Category: <span className="font-bold text-slate-800">{getNeedCategoryMeta(q.need_category).label}</span>
+                                      </span>
+                                    </div>
                                   </div>
                                   <div className="flex items-center gap-1.5 shrink-0">
                                     <button className="pill-btn ghost text-xs py-1 px-2.5" onClick={() => { setEditingQuestionId(q.id); setEditQText(q.question_text); setEditQCat(q.need_category) }}>Edit</button>
@@ -1104,9 +1152,26 @@ export function OfficialConsole() {
                       {/* Add Question Form at bottom */}
                       <form onSubmit={handleAddQuestion} className="flex flex-col gap-2 pt-3 mt-3 border-t border-slate-100 w-full overflow-hidden">
                         <span className="text-xs font-bold text-slate-800">Add Question</span>
-                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_130px] gap-2 w-full">
-                          <input value={newQ} onChange={e => setNewQ(e.target.value)} placeholder="e.g. Does your household need food or clean drinking water?" className="h-9 rounded-xl px-3 text-xs border border-slate-200 bg-white text-slate-900 w-full min-w-0" />
-                          <input value={newCat} onChange={e => setNewCat(e.target.value)} placeholder="Need category" className="h-9 rounded-xl px-3 text-xs border border-slate-200 bg-white text-slate-900 w-full min-w-0" />
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_210px] gap-2 w-full">
+                          <input
+                            value={newQ}
+                            onChange={e => setNewQ(e.target.value)}
+                            placeholder="e.g. Does your household need food or clean drinking water?"
+                            className="h-9 rounded-xl px-3 text-xs border border-slate-200 bg-white text-slate-900 w-full min-w-0"
+                          />
+                          <select
+                            value={newCat}
+                            onChange={e => setNewCat(e.target.value)}
+                            className="h-9 rounded-xl px-2.5 text-xs border border-slate-200 bg-white text-slate-900 w-full min-w-0 font-medium cursor-pointer"
+                            required
+                          >
+                            <option value="">— Select RDANA Category —</option>
+                            {RDANA_CATEGORY_OPTIONS.map(cat => (
+                              <option key={cat.value} value={cat.value}>
+                                {cat.label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                         <button className="pill-btn ghost text-xs py-1.5 w-full font-bold justify-center" type="submit">
                           + Add Question to Set
@@ -1429,7 +1494,7 @@ export function OfficialConsole() {
                   >
                     <span>
                       <strong style={{ display: 'block', fontSize: '14px' }}>{q.question_text}</strong>
-                      <span style={{ display: 'block', marginTop: '3px', color: '#667085', fontSize: '13px' }}>{q.need_category}</span>
+                      <span style={{ display: 'block', marginTop: '3px', color: '#667085', fontSize: '13px' }}>{getNeedCategoryMeta(q.need_category).label}</span>
                     </span>
                     <strong style={{ fontSize: '14px', color: manualAnswers[q.id] === 'yes' ? 'var(--blue)' : '#667085' }}>
                       {manualAnswers[q.id] === 'yes' ? 'Yes' : 'No'}
@@ -1452,7 +1517,6 @@ export function OfficialConsole() {
           <div className="modal-card" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2>Confirm {pendingAction.type === 'publish' ? 'publish' : pendingAction.type === 'close' ? 'close' : 'archive'}</h2>
-              <button className="pill-btn ghost" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => setPendingAction(null)}>Cancel</button>
             </div>
             {pendingAction.type === 'publish' && (
               <div className="mb-4">
@@ -1460,13 +1524,11 @@ export function OfficialConsole() {
                   This will open the assessment for check-ins. Any other active assessment will be automatically closed.
                   Residents will see this assessment as the active check-in prompt.
                 </p>
+                <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-3 text-xs leading-5 text-blue-900">
+                  This publish action is connected to eGovPH eSMS and third-party Telegram notifications so residents can receive the assessment and submit their household report through the channel available to them.
+                </div>
               </div>
             )}
-            {pendingAction.type === 'close' && (
-              <div className="mb-4">
-                <p style={{ color: '#4b5568', lineHeight: 1.5, fontSize: '14px' }}>
-                  Closing stops new check-ins. Existing data remains viewable and exportable.
-                  You can still archive this assessment later, but residents will no longer be able to submit reports.
                 </p>
               </div>
             )}
@@ -1479,8 +1541,8 @@ export function OfficialConsole() {
               </div>
             )}
             <div className="flex gap-3">
-              <button className={`big-btn ${pendingAction.type === 'archive' ? 'danger' : 'primary'}`} onClick={handleConfirmAction}>
-                {pendingAction.type === 'publish' ? 'Publish assessment' : pendingAction.type === 'close' ? 'Close assessment' : 'Archive assessment'}
+              <button className={`big-btn ${pendingAction.type === 'archive' ? 'danger' : 'primary'}`} onClick={handleConfirmAction} disabled={dispatching}>
+                {dispatching ? 'Publishing and notifying...' : pendingAction.type === 'publish' ? 'Publish assessment' : pendingAction.type === 'close' ? 'Close assessment' : 'Archive assessment'}
               </button>
               <button className="big-btn ghost" onClick={() => setPendingAction(null)}>Cancel</button>
             </div>
