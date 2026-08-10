@@ -16,6 +16,11 @@
  */
 
 import 'dotenv/config'
+import {
+  campaignFromAlertMessage,
+  draftBelongsToMessage,
+  questionsFromAlertMessage,
+} from './telegram-alert-state.mjs'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN
 const EGOV_AI_BASE = process.env.VITE_EGOV_AI_BASE_URL || 'https://egov-ai-core-ws.oueg.info'
@@ -167,16 +172,6 @@ function buildQuestionKeyboard(questions, draftAnswers = {}) {
   return { inline_keyboard: rows }
 }
 
-// Direct broadcasts from the official console carry the current questions in
-// the message itself. Use them for callbacks before falling back to the bot's
-// local campaign file.
-function questionsFromAlertMessage(text) {
-  return (text || '').split('\n')
-    .map(line => line.match(/^\s*[•-]\s+\*?Q\d+:\*?\s+(.+)$/))
-    .filter(Boolean)
-    .map(match => ({ question_text: match[1], need_category: 'assessment' }))
-}
-
 // Send interactive alert card with dynamic questions
 async function sendDisasterAlert(chatId) {
   const active = loadActiveCampaign()
@@ -185,11 +180,6 @@ async function sendDisasterAlert(chatId) {
     { question_text: 'Is your family short on food supply (less than 3 days)?', need_category: 'food_water' },
     { question_text: 'Does anyone in your household need medical attention?', need_category: 'medical' },
   ]
-
-  // Initialize empty answers (default false/safe)
-  const initialAnswers = {}
-  questions.forEach((_, idx) => { initialAnswers[`q_${idx}`] = false })
-  userCheckInDrafts.set(chatId, { answers: initialAnswers, questions, campaign: active })
 
   const qListText = questions.map((q, idx) => `• *Q${idx + 1}:* ${q.question_text}`).join('\n')
   const sampleReply = 'HANDA ' + questions.map((_, i) => (i % 2 === 0 ? 'YES' : 'NO')).join(' ')
@@ -205,8 +195,19 @@ async function sendDisasterAlert(chatId) {
     `👉 \`${sampleReply}\`\n\n` +
     PH_HOTLINES_SHORT
 
+  const initialAnswers = {}
+  questions.forEach((_, idx) => { initialAnswers[`q_${idx}`] = false })
   const keyboard = buildQuestionKeyboard(questions, initialAnswers)
-  return sendTextMessage(chatId, text, { reply_markup: keyboard })
+  const response = await sendTextMessage(chatId, text, { reply_markup: keyboard })
+  if (response.ok && response.result?.message_id) {
+    userCheckInDrafts.set(chatId, {
+      answers: initialAnswers,
+      questions,
+      campaign: active,
+      messageId: response.result.message_id,
+    })
+  }
+  return response
 }
 
 // Handle Callback Queries (Button Taps)
@@ -216,13 +217,15 @@ async function handleCallbackQuery(query) {
   const data = query.data
 
   let draftData = userCheckInDrafts.get(chatId)
-  if (!draftData || !draftData.answers) {
+  if (!draftBelongsToMessage(draftData, messageId) || !draftData.answers) {
     const active = loadActiveCampaign()
     const messageQuestions = questionsFromAlertMessage(query.message.text)
     const questions = messageQuestions.length > 0 ? messageQuestions : active.questions
+    const campaign = campaignFromAlertMessage(query.message.text, active)
     const initialAnswers = {}
     questions.forEach((_, idx) => { initialAnswers[`q_${idx}`] = false })
-    draftData = { answers: initialAnswers, questions, campaign: active }
+    draftData = { answers: initialAnswers, questions, campaign, messageId }
+    userCheckInDrafts.set(chatId, draftData)
   }
 
   const { answers, questions, campaign } = draftData
@@ -295,6 +298,7 @@ async function handleCallbackQuery(query) {
       `📍 *Location:* ${campaign.barangay}, ${campaign.municipality}\n` +
       `🔄 *Status:* Live Synced with LGU Incident Command Dashboard`
 
+    userCheckInDrafts.delete(chatId)
     return sendTextMessage(chatId, summary)
   }
 
@@ -381,13 +385,14 @@ async function handleMessage(msg) {
 let lastOffset = 0
 
 async function startPolling() {
-  const me = await telegramRequest('getMe')
-  if (!me.ok) {
-    console.error('Failed to connect to Telegram API:', me)
-    return
-  }
+  let connected = false
 
-  console.log(`
+  while (!connected) {
+    try {
+      const me = await telegramRequest('getMe')
+      if (me.ok && me.result) {
+        connected = true
+        console.log(`
 ===================================================================
 🤖 eHANDA Telegram Citizen Emergency Bot is LIVE!
 -------------------------------------------------------------------
@@ -397,12 +402,27 @@ Status:       Connected & Listening for Citizen Messages...
 ===================================================================
 Open Telegram, search for @${me.result.username}, and click START!
 `)
+      } else {
+        console.warn('[Telegram Connection] Retrying in 5s...', me)
+        await new Promise((r) => setTimeout(r, 5000))
+      }
+    } catch (err) {
+      console.warn('[Telegram Connection Error]:', err.message, '— retrying in 5s...')
+      await new Promise((r) => setTimeout(r, 5000))
+    }
+  }
 
   while (true) {
     try {
-      const res = await fetch(`${TELEGRAM_API}/getUpdates?offset=${lastOffset}&timeout=30`, {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 45000)
+
+      const res = await fetch(`${TELEGRAM_API}/getUpdates?offset=${lastOffset}&timeout=25`, {
         method: 'GET',
+        signal: controller.signal,
       })
+      clearTimeout(timeoutId)
+
       const data = await res.json()
 
       if (data.ok && Array.isArray(data.result)) {
@@ -410,17 +430,28 @@ Open Telegram, search for @${me.result.username}, and click START!
           lastOffset = update.update_id + 1
 
           if (update.callback_query) {
-            await handleCallbackQuery(update.callback_query)
+            await handleCallbackQuery(update.callback_query).catch(e => console.warn('[Callback Error]:', e.message))
           } else if (update.message && update.message.text) {
-            await handleMessage(update.message)
+            await handleMessage(update.message).catch(e => console.warn('[Message Error]:', e.message))
           }
         }
       }
     } catch (err) {
-      console.warn('[Polling warning]:', err.message)
-      await new Promise((r) => setTimeout(r, 2000))
+      // Ignore AbortError / transient disconnects and smoothly backoff
+      if (err.name !== 'AbortError') {
+        console.warn('[Polling warning]:', err.message)
+      }
+      await new Promise((r) => setTimeout(r, 3000))
     }
   }
 }
+
+// Global unhandled error guards so process doesn't exit unexpectedly
+process.on('uncaughtException', (err) => {
+  console.warn('[Uncaught Exception]:', err.message)
+})
+process.on('unhandledRejection', (reason) => {
+  console.warn('[Unhandled Rejection]:', reason)
+})
 
 startPolling()

@@ -8,11 +8,10 @@ import type { AlertIngestionResult } from '@/features/alerts'
 import { getHistoricalIncidentMeta } from '@/features/demo/historical-selectors'
 import { groupCampaignsForDisplay } from './assessment-list'
 import { dispatchAlert } from '@/lib/alert-dispatcher'
-import { lookupLocationNames } from '@/lib/psa-fallback-data'
 
 type DeveloperApplicationStatus = 'pending' | 'accepted' | 'rejected'
 
-export const RDANA_CATEGORY_OPTIONS = [
+const RDANA_CATEGORY_OPTIONS = [
   { value: 'shelter', label: 'Shelter / Housing (Section II-A)' },
   { value: 'food_water', label: 'Food & Water (Section II-B)' },
   { value: 'medical', label: 'Health / Medical (Section II-C)' },
@@ -36,6 +35,7 @@ type DeveloperApplication = {
 const DEVELOPER_APPLICATIONS_STORAGE_KEY = 'handa_developer_applications'
 
 const DEFAULT_DEVELOPER_APPLICATIONS: DeveloperApplication[] = [
+  {
     id: 'dev-app-001',
     applicant_name: 'Alyssa Mendoza',
     email: 'alyssa@citydata.ph',
@@ -1528,8 +1528,13 @@ export function OfficialConsole() {
                 <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-3 text-xs leading-5 text-blue-900">
                   This publish action is connected to eGovPH eSMS and third-party Telegram notifications so residents can receive the assessment and submit their household report through the channel available to them.
                 </div>
-              </div>
+                </div>
             )}
+            {pendingAction.type === 'close' && (
+              <div className="mb-4">
+                <p style={{ color: '#4b5568', lineHeight: 1.5, fontSize: '14px' }}>
+                  Closing stops new check-ins. Existing data remains viewable and exportable.
+                  You can still archive this assessment later, but residents will no longer be able to submit reports.
                 </p>
               </div>
             )}

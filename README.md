@@ -1,67 +1,265 @@
-# Handa: Disaster Aid & Assessment Platform
+# HANDA: Disaster Aid & Assessment Platform
 
-## Overview
-Handa is a centralized disaster assessment and aid service built for the eGovPH Hackathon 2026. Rather than just being a standalone application, Handa acts as a complete ecosystem allowing local government units (LGUs), citizens, and external developers to coordinate disaster aid, rapidly collect needs analysis, and deliver targeted relief.
+HANDA is an eGovPH-aligned disaster assessment and aid coordination platform for barangay officials, residents, LGUs, and approved developer integrations. It turns incoming disaster alerts into structured RDANA assessments, publishes those assessments to residents, collects household check-ins, and gives response teams a live operational queue.
 
-## Process Flow & Navigation Guide for Judges
+## Current System Flow
 
-To experience the full flow of the eHanda platform, please follow this guide which walks through the various roles, features, and user journeys.
+```text
+eGov SSO / demo identity
+        |
+        v
+Role routing: official | resident | LGU | developer
+        |
+        +--> Official creates an assessment
+        |       |
+        |       +--> Adds or copies RDANA questions
+        |       +--> Publishes draft
+        |              |
+        |              +--> eGovPH eSMS notification
+        |              +--> Telegram dynamic survey card
+        |              +--> eGovPH resident assessment becomes active
+        |
+        +--> Resident answers the active assessment
+        |       |
+        |       +--> eHanda check-in saved to Supabase
+        |       +--> Filipino/English presentation support
+        |       +--> eReport emergency-report option
+        |
+        +--> Official reviews the dashboard queue
+                |
+                +--> Filter, sort, and inspect responses
+                +--> Mark cases visited or resolved
+                +--> Add offline/manual entries
+                +--> Export CSV
+```
 
-### 1. Login Screen & Access
-To gain access to the system, please use the **Demo Accounts** available on the login screen. These demo accounts simulate test users authenticated via the **eGov SSO** accounts provided by the eGov PH API.
+Only one assessment is active for intake at a time. Publishing a new assessment closes the previous active assessment.
 
----
+## Demo Walkthrough
 
-### 2. Role-Based Capabilities
+### 1. Sign In
 
-The system is broken down into distinct perspectives to handle disaster aid end-to-end.
+Use the demo accounts shown on the login screen. The mock eGov SSO flow returns a profile containing the role, barangay code, municipality code, and other location metadata.
 
-#### A. Barangay Level (Command Center)
-This role acts as the primary data gatherer and localized command center. While capable of city/regional-wide pings, our scope focuses heavily on the barangay level for precision.
+### 2. Official Assessment Setup
 
-**User Flow for Barangay Assessment:**
-1. **Initiate Campaign (Manual or Automated):** The Barangay Command Center creates a new disaster assessment campaign. This can be done in two ways:
-   - **Manual Logging:** The LGU manually creates the assessment.
-   - **Automated AI Drafting (Simulation):** We integrated a simulation test that ingests **PAGASA, NDRRMC, or PHIVOLCS** SMS alerts/reports. Using **LangChain**, the AI automatically drafts a campaign and formulates the appropriate questions based on the ingested disaster report.
-2. **Formulate Questions:** Assessment questions adhere to RDANA (Rapid Damage Assessment and Needs Analysis) as well as international/LGU standards.
-3. **Dispatch & Publish:** The campaign is published and pushed out to citizens through the **eGov App** or any dedicated barangay/city app.
-4. **Data Collection (Online & Offline):** 
-   - **App Users:** Citizens submit reports directly through their app.
-   - **Manual Entry / Offline Support:** For walk-ins or disconnected areas, local officials can use the dashboard's manual entry feature. If the citizen's app is used in an area with no internet, it utilizes SQLite and a cache-based system to queue reports offline, syncing them to the database once connectivity is restored.
+Officials can:
 
-#### B. Citizen/Resident Access (eGov App / Any App)
-This represents the citizen's interface, allowing them to report their status, request help, and access vital information.
+- Create a draft assessment with a name, disaster type, and disaster date.
+- Add questions mapped to RDANA categories such as shelter, food/water, medical, livelihood, evacuation, and utilities.
+- Edit or remove questions.
+- Copy a question set from another assessment.
+- Review AI-generated assessment drafts.
+- Publish, close, or archive assessments.
 
-- **eGov AI Chat Query:** A built-in AI assistant capable of translation (local dialects, documented specifically in Filipino). Citizens can use eGov AI to ask for disaster guides, evacuation preparedness, or post-earthquake steps.
-- **eReport Integration:** A critical feature for submitting individual emergency reports. This is a must-use for immediate, person-to-person concerns (e.g., immediate medical rescue, trapped individuals, red tape).
-- **eHanda Assessment Check-ins:** Citizens respond to the active barangay assessment guide. By providing their status (safe, injured, needs food/water), government units and NGOs can see aggregated data in the Command Center and provide targeted help.
+### 3. Alert-to-Draft Pipeline
 
-#### C. LGU Command Center (Parent Dashboard)
-A layer above the Barangay, this centralized dashboard presents a city-wide view.
-- Provides macro-level visibility across all child barangays.
-- Aggregates live data to show the hardest-hit areas, overall affected populations, and real-time incident tracking.
-- Helps city decision-makers and mayors allocate regional resources effectively according to aggregated citizen needs.
+The dashboard includes a development alert simulator for PAGASA, NDRRMC, and PHIVOLCS-style CAP/SMS alerts.
 
-#### D. Developer Role (The Handa Service Ecosystem)
-What makes Handa truly unique is that it is **not just a standalone app—it is a backend service/platform.**
-- **API Integration:** Any developer, IT team, or LGU can integrate their existing systems with Handa.
-- **Access to Real Data:** Using provided API keys and developer documentation, external applications can securely hook into Handa to reflect real-time assessment data, **eReport** statuses, and **PSA Datasets**.
-- **Community Expansion:** This openness allows for student thesis projects, capstone projects, and future community applications to build on top of Handa's infrastructure, continuously expanding the disaster aid ecosystem.
+The simulated Layer 1 pipeline is:
 
----
+```text
+CAP/SMS payload
+  -> CAP parsing
+  -> event normalization
+  -> PSGC location extraction
+  -> severity threshold evaluation
+  -> RDANA question drafting
+  -> official review
+  -> publish
+```
 
-## Integrated eGov PH APIs & Datasets
-This project heavily leverages the eGov PH ecosystem. The following APIs and Datasets are integrated within eHanda:
-- **eGov SSO API:** Used for secure authentication (simulated through Demo Accounts for the hackathon).
-- **eGov AI API:** Used to power the Citizen Chat feature for disaster preparedness guides and local dialect translation.
-- **eReport API & Datasets:** Used to log and reflect real-time citizen incident concerns (medical, rescue, red tape) directly into the LGU dashboards. **Why rely on eReport?** Instead of building a redundant, isolated reporting structure from scratch that citizens must download and learn during high-stress situations, eHanda integrates directly with the existing eGov national infrastructure. This ensures citizens can use the app they already know, while providing LGUs with a unified, official data stream.
-- **eGov PSA Datasets:** Provides the foundational demographics and regional data used for mapping LGUs and barangays, and displaying population fallbacks when generating analytics.
+The drafting service uses eGov AI/Gemini when configured and deterministic RDANA templates as an offline fallback.
 
----
+### 4. Publish and Notify
 
-## Tech Stack
-- **Frontend:** React + TypeScript + Vite, Tailwind CSS, Radix UI
-- **State/Data:** React Hooks, LocalStorage / Demo Data, PSA Fallback Datasets
-- **AI Integration:** LangChain / Google Gemini for automated RDANA questionnaire drafting from PAGASA/NDRRMC reports, alongside the eGov AI API.
+Publishing an assessment updates its status to `active` and dispatches the current question set through the configured channels:
 
-*Note: For the purpose of this hackathon, specific external database integrations are simulated using robust mock data and UI states to demonstrate the full process flow.*
+- **eGovPH eSMS:** Sends a concise emergency alert, evacuation instruction, barangay desk contact, and emergency hotlines. Survey questions are intentionally omitted from SMS so the message remains usable on constrained devices.
+- **Telegram:** Sends the assessment title, verified display area, evacuation/offline-aid instruction, dynamic question list, YES/NO buttons, and a submit button.
+- **eGovPH resident flow:** Residents see the active assessment in the resident console.
+
+Location display uses verified dataset names instead of raw PSGC codes. Unknown barangay names are not fabricated or displayed as numeric codes. If only a city or region is verified, the notification displays only that verified level.
+
+### 5. Telegram Check-In Behavior
+
+The local Telegram bot runs through long polling in `scratch/telegram-bot.mjs`.
+
+Each Telegram answer draft is bound to the exact alert message being answered. This prevents a previous campaign from being mixed with a newer campaign when the same user receives multiple alerts. Confirmation uses:
+
+- The questions from the clicked alert message.
+- The campaign title from the clicked alert message.
+- The area from the clicked alert message.
+
+The completed draft is cleared after confirmation.
+
+### 6. Resident Reporting
+
+Residents can:
+
+- See the active barangay assessment.
+- Answer its dynamic question set.
+- Submit a household check-in.
+- Receive a submission confirmation.
+- View Filipino translations for supported campaign and question text.
+- Open the eReport submission flow for an individual emergency concern.
+- Use the eGov AI assistant for disaster guidance and translation support.
+
+### 7. Official Operations Dashboard
+
+The official dashboard provides:
+
+- Total check-ins and unresolved cases.
+- Need-category aggregation.
+- Sortable and filterable response queue.
+- Individual case detail and answer inspection.
+- Case status updates: unresolved, visited, resolved.
+- Manual resident entry for offline field collection.
+- CSV export with anonymized resident identity, needs, status, submitter, and timestamp.
+
+### 8. LGU and Developer Views
+
+The LGU dashboard provides city/municipality-scoped incident summaries, child-barangay activity, response metrics, priority supplies, and developer access requests.
+
+The developer console demonstrates:
+
+- Barangay-scoped API access.
+- API key and endpoint documentation.
+- eReport dataset browsing.
+- eGov AI and integration status panels.
+- Developer application review from the official/LGU consoles.
+
+## Integrated eGovPH Services
+
+### eGov SSO
+
+The authentication layer supports mock demo identities and the eGovPH SSO integration path. The resulting profile supplies role and geographic scope information used by the application.
+
+### eGov AI
+
+The eGov AI service powers the citizen assistant, disaster guidance, and translation flows. Local fallback responses are used when the live service is unavailable.
+
+### eReport API
+
+The eReport service supports the documented integration endpoints:
+
+```text
+POST /api/integration/token
+GET  /api/integration/datasets/regions
+GET  /api/integration/datasets/provinces?region_code={code}
+GET  /api/integration/datasets/municipalities?province_code={code}
+GET  /api/integration/datasets/barangays?municipality_code={code}
+POST /api/integration/submit_complaint
+POST /api/integration/verify/request
+POST /api/integration/verify/confirm
+GET  /api/integration/reports
+```
+
+The location hierarchy is:
+
+```text
+region -> province -> municipality/city -> barangay
+```
+
+The eReport API is intended to provide the complete live dataset. The repository also contains a limited eReport-shaped PSA fallback dataset for offline/demo use. If a live dataset request fails, the service falls back to the bundled data.
+
+The eReport token sequence is:
+
+```text
+access_code
+  -> POST /api/integration/token
+  -> integration_token
+  -> dataset and complaint requests
+```
+
+Report viewing uses a separate `integration_report_view_token` obtained after email OTP verification.
+
+### eGovPH eSMS
+
+The publish dispatcher calls the eMessage Push SMS endpoint and normalizes Philippine mobile numbers to E.164 format. Configure recipients with `VITE_EMESSAGE_SMS_RECIPIENTS` as a comma-separated list.
+
+### Telegram
+
+The browser dispatcher sends dynamic assessment cards to configured Telegram chat IDs. The local bot handles button callbacks, text replies, confirmation summaries, emergency hotlines, and eGov AI fallback responses.
+
+## Environment Configuration
+
+Copy `.env.example` to `.env` and configure only the integrations required for the demo.
+
+```env
+# Supabase
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+
+# eGov SSO demo/live settings
+VITE_EGOV_SSO_USE_MOCK=true
+
+# eReport
+VITE_EREPORT_BASE_URL=https://stg-ereport-ws.oueg.info
+VITE_EREPORT_ACCESS_TOKEN=
+VITE_EGOV_INTEGRATION_ACCESS_CODE=
+
+# eGovPH eSMS
+VITE_EMESSAGE_INTEGRATION_BASE_URL=https://ws-message.e.gov.ph
+VITE_EMESSAGE_ACCESS_TOKEN=
+VITE_EMESSAGE_SMS_RECIPIENTS=
+
+# Telegram
+VITE_TELEGRAM_BOT_TOKEN=
+VITE_TELEGRAM_CHAT_IDS=
+```
+
+In the current code, `VITE_EREPORT_ACCESS_TOKEN` is the legacy variable name used as the eReport access code. `VITE_EGOV_INTEGRATION_ACCESS_CODE` is used as its fallback. Do not commit real credentials.
+
+## Local Development
+
+Install dependencies and run the web application:
+
+```bash
+npm install
+npm run dev
+```
+
+Run the Telegram bot separately:
+
+```powershell
+$env:TELEGRAM_BOT_TOKEN="your-bot-token"
+node scratch/telegram-bot.mjs
+```
+
+The Vite development proxy maps `/api/ereport` to the configured eReport integration server so dataset requests can be tested without duplicating the `/api/integration` path.
+
+## Verification Commands
+
+```bash
+npm run build
+npm run test:unit
+npm run lint
+```
+
+The repository also contains focused tests for alert payload formatting, PSA location resolution, and Telegram message-bound state handling.
+
+## Repository Structure
+
+```text
+src/features/official/OfficialConsole.tsx    Official assessment and operations console
+src/features/resident/ResidentConsole.tsx     Resident check-in experience
+src/features/lgu/LguDashboard.tsx             LGU command-center view
+src/features/alerts/                          Alert parsing and AI draft pipeline
+src/lib/alert-dispatcher.ts                   eSMS and Telegram publish dispatch
+src/lib/emessage-sms-service.ts               eGovPH eSMS client and formatting
+src/lib/ereport-service.ts                    eReport API and dataset service
+src/lib/psa-fallback-data.ts                  Bundled location fallback dataset
+scratch/telegram-bot.mjs                      Local Telegram long-polling bot
+supabase/migrations/                          Database schema and demo seeds
+docs/eReport-API-Documentation.md              eReport integration reference
+```
+
+## Demo Scope and Limitations
+
+- This is a hackathon/demo build, not a production deployment.
+- The browser dispatcher currently consumes `VITE_*` integration values; production deployments should move provider credentials behind a server-side or Supabase Edge Function boundary.
+- SMS recipients and Telegram chat IDs must be configured for real recipients. The demo may use configured sample targets.
+- The Telegram bot is a local long-polling process and must be restarted after bot code changes.
+- The bundled location data is a fallback subset. The live eReport API should be used when nationwide location coverage is required.
+- Supabase persistence and external API availability depend on environment configuration and service permissions.
