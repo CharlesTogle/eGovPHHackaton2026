@@ -1,3 +1,4 @@
+import { supabase } from './supabase'
 import { broadcastSms, SMS_HOTLINES_BLOCK, type DynamicQuestionItem } from './emessage-sms-service'
 import { lookupNotificationLocation } from './psa-fallback-data'
 
@@ -25,8 +26,7 @@ export type ChannelResult = {
 
 export type DispatchResult = { results: ChannelResult[] }
 
-const TELEGRAM_BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN || ''
-const DEFAULT_SMS_RECIPIENTS = ['+639702045579']
+/** Default chat IDs — also kept in TELEGRAM_CHAT_IDS Edge Function secret for override. */
 const DEFAULT_TELEGRAM_CHAT_IDS = [8619550367]
 
 export function resolveNotificationLocation(barangay: string, municipality: string): string {
@@ -101,32 +101,34 @@ export function buildTelegramKeyboard(questions: DynamicQuestionItem[]): Telegra
 function getSmsRecipients(explicitRecipients?: string[]): string[] {
   if (explicitRecipients?.length) return explicitRecipients
   const configured = import.meta.env.VITE_EMESSAGE_SMS_RECIPIENTS
-  return configured ? configured.split(',').map((value: string) => value.trim()).filter(Boolean) : DEFAULT_SMS_RECIPIENTS
+  return configured ? configured.split(',').map((v: string) => v.trim()).filter(Boolean) : ['+639702045579']
 }
 
 function getTelegramChatIds(explicitChatIds?: number[]): number[] {
   if (explicitChatIds?.length) return explicitChatIds
-  const configured = import.meta.env.VITE_TELEGRAM_CHAT_IDS
-  if (configured) {
-    return configured.split(',').map((value: string) => Number(value.trim())).filter(Number.isFinite)
-  }
   return DEFAULT_TELEGRAM_CHAT_IDS
 }
 
+/**
+ * Send a Telegram message via Supabase Edge Function proxy.
+ * TELEGRAM_BOT_TOKEN is read from Deno.env — never exposed to the browser.
+ */
 async function sendTelegram(chatId: number, message: string, replyMarkup: TelegramKeyboard): Promise<{ success: boolean; error?: string }> {
-  if (!TELEGRAM_BOT_TOKEN) return { success: false, error: 'Telegram bot token is not configured.' }
+  if (!supabase) return { success: false, error: 'Supabase client not initialised.' }
 
   try {
-    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown', reply_markup: replyMarkup }),
+    const { data, error } = await supabase.functions.invoke('egov', {
+      body: {
+        action: 'send-telegram',
+        payload: { chat_id: chatId, text: message, parse_mode: 'Markdown', reply_markup: replyMarkup },
+      },
     })
-    const body = await response.json() as { ok?: boolean; description?: string }
-    if (body.ok) return { success: true }
-    return { success: false, error: body.description ?? `Telegram returned HTTP ${response.status}` }
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Telegram network error' }
+
+    if (error) return { success: false, error: error.message ?? 'Edge Function error' }
+    const result = data as { success?: boolean; error?: string }
+    return { success: result.success ?? false, error: result.error }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Telegram network error' }
   }
 }
 

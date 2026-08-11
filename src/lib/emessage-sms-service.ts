@@ -1,3 +1,5 @@
+import { supabase } from './supabase'
+
 export type DynamicQuestionItem = {
   question_text: string
   need_category?: string
@@ -17,9 +19,6 @@ export const SMS_HOTLINES_BLOCK =
   '*0917-724-3682 (Coast Guard)\n' +
   '*1555 (DOH Healthline)'
 
-const EMESSAGE_BASE_URL = import.meta.env.VITE_EMESSAGE_INTEGRATION_BASE_URL || 'https://ws-message.e.gov.ph'
-const EMESSAGE_TOKEN = import.meta.env.VITE_EMESSAGE_ACCESS_TOKEN || ''
-
 export function normalizeToE164(input: string): string | null {
   const cleaned = input.replace(/[\s\-()]/g, '')
   if (/^\+63\d{10}$/.test(cleaned)) return cleaned
@@ -29,37 +28,40 @@ export function normalizeToE164(input: string): string | null {
   return null
 }
 
+/**
+ * Send SMS via Supabase Edge Function proxy.
+ * Token never leaves the server — EMESSAGE_ACCESS_TOKEN is read from Deno.env.
+ */
 export async function sendSms(number: string, message: string): Promise<SmsPushResult> {
-  if (!EMESSAGE_TOKEN) {
-    return { success: false, status: 0, error: 'eGov eSMS access token is not configured.' }
-  }
-
   const normalized = normalizeToE164(number)
   if (!normalized) {
     return { success: false, status: 422, error: `Invalid Philippine mobile number: ${number}` }
   }
 
+  if (!supabase) {
+    return { success: false, status: 0, error: 'Supabase client not initialised.' }
+  }
+
   try {
-    const response = await fetch(`${EMESSAGE_BASE_URL}/messaging/v1/sms/push`, {
-      method: 'POST',
-      headers: {
-        'X-EMESSAGE-Auth': EMESSAGE_TOKEN,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ number: normalized, message }),
+    const { data, error } = await supabase.functions.invoke('egov', {
+      body: { action: 'send-sms', payload: { number: normalized, message } },
     })
 
-    if (response.status === 201) return { success: true, status: response.status }
-    return {
-      success: false,
-      status: response.status,
-      error: `eGov eSMS returned HTTP ${response.status}: ${await response.text()}`,
+    if (error) {
+      return { success: false, status: 0, error: error.message ?? 'Edge Function error' }
     }
-  } catch (error) {
+
+    const result = data as { success?: boolean; status?: number; error?: string }
+    return {
+      success: result.success ?? false,
+      status: result.status ?? 0,
+      error: result.error,
+    }
+  } catch (err) {
     return {
       success: false,
       status: 0,
-      error: `eGov eSMS request failed: ${error instanceof Error ? error.message : 'network error'}`,
+      error: `SMS request failed: ${err instanceof Error ? err.message : 'network error'}`,
     }
   }
 }

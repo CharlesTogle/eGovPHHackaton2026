@@ -1,16 +1,12 @@
 /**
  * eReport API Service Layer
  *
- * Provides typed methods for eReport integration:
- * - Authentication (Token Generation)
- * - Datasets (Report Types, Regions, Provinces, Municipalities, Barangays)
- * - Complaint Submission
- * - OTP Verification & Report Viewing
- *
- * Automatically routes requests via Vite dev proxy (`/api/ereport`) in development
- * to bypass browser CORS restrictions.
+ * All requests are proxied through the Supabase Edge Function ("egov").
+ * EREPORT_ACCESS_TOKEN is read from Deno.env on the server —
+ * it is never exposed in the browser bundle.
  */
 
+import { supabase } from "./supabase"
 import {
   PSA_REGIONS,
   PSA_PROVINCES,
@@ -25,13 +21,6 @@ import {
 } from "./psa-fallback-data"
 
 export type { RegionItem, ProvinceItem, MunicipalityItem, BarangayItem, ReportTypeItem }
-
-const IS_DEV = import.meta.env.DEV
-const RAW_BASE_URL = (import.meta.env.VITE_EREPORT_BASE_URL as string) || "https://hackathon-sso.e.gov.ph"
-const BASE_URL = IS_DEV ? "/api/ereport" : `${RAW_BASE_URL}/api/integration`
-const ACCESS_CODE = (import.meta.env.VITE_EREPORT_ACCESS_TOKEN as string) || (import.meta.env.VITE_EGOV_INTEGRATION_ACCESS_CODE as string) || ""
-
-let cachedIntegrationToken: string | null = null
 
 export interface SubmitComplaintPayload {
   mobile: string
@@ -63,35 +52,26 @@ export interface SubmitComplaintResponse {
 }
 
 /**
- * Get or refresh integration token for eReport
+ * Proxy an eReport API call through the Edge Function.
  */
-export async function getEReportToken(): Promise<string> {
-  if (cachedIntegrationToken) return cachedIntegrationToken
-
-  if (!ACCESS_CODE) {
-    console.warn("[eReport] No access code configured.")
-    throw new Error("eReport access code missing.")
-  }
-
-  const endpoint = `${BASE_URL}/token`
-
+async function ereportProxy<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T | null> {
+  if (!supabase) return null
   try {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_code: ACCESS_CODE }),
+    const { data, error } = await supabase.functions.invoke("egov", {
+      body: { action: "ereport-proxy", payload: { method, path, body } },
     })
-
-    if (!res.ok) throw new Error(`eReport token error: HTTP ${res.status}`)
-
-    const data = await res.json()
-    cachedIntegrationToken = data.access_token || data.token
-    console.log("[eReport] Successfully authenticated with live integration token.")
-    return cachedIntegrationToken!
+    if (error) {
+      console.warn(`[eReport] Edge function error for ${path}:`, error.message)
+      return null
+    }
+    return data as T
   } catch (err) {
-    console.error("[eReport] Token request failed:", err)
-    cachedIntegrationToken = "ereport_mock_integration_token_12345"
-    return cachedIntegrationToken
+    console.warn(`[eReport] Edge function request failed for ${path}:`, err)
+    return null
   }
 }
 
@@ -101,13 +81,12 @@ export async function getEReportToken(): Promise<string> {
 export async function getReportTypes(): Promise<ReportTypeItem[]> {
   const DISASTER_SCOPED_CODES = ["fire", "accident", "red_tape"]
   try {
-    const token = await getEReportToken()
-    const res = await fetch(`${BASE_URL}/datasets/report_types`, {
-      headers: { "Authorization": `Bearer ${token}` },
-    })
-    if (!res.ok) throw new Error(`Report types error: HTTP ${res.status}`)
-    const json = await res.json()
-    const allTypes = json.data.map((item: any) => ({
+    const json = await ereportProxy<{ data: { id: string; attributes: { code: string; name: string; sequence: number; is_visible: boolean; is_active: boolean } }[] }>(
+      "GET",
+      "/datasets/report_types",
+    )
+    if (!json) throw new Error("No response")
+    const allTypes = json.data.map((item) => ({
       id: item.id,
       code: item.attributes.code,
       name: item.attributes.name,
@@ -128,16 +107,9 @@ export async function getReportTypes(): Promise<ReportTypeItem[]> {
  */
 export async function getRegions(): Promise<RegionItem[]> {
   try {
-    const token = await getEReportToken()
-    const res = await fetch(`${BASE_URL}/datasets/regions`, {
-      headers: { "Authorization": `Bearer ${token}` },
-    })
-    if (!res.ok) throw new Error(`Regions error: HTTP ${res.status}`)
-    const json = await res.json()
-    return json.data.map((item: any) => ({
-      id: item.id,
-      name: item.attributes.name,
-    }))
+    const json = await ereportProxy<{ data: { id: string; attributes: { name: string } }[] }>("GET", "/datasets/regions")
+    if (!json) throw new Error("No response")
+    return json.data.map((item) => ({ id: item.id, name: item.attributes.name }))
   } catch (err) {
     console.warn("[eReport] Failed to fetch regions, returning all 18 PSA regions fallback:", err)
     return PSA_REGIONS
@@ -149,22 +121,19 @@ export async function getRegions(): Promise<RegionItem[]> {
  */
 export async function getProvinces(regionCode: string): Promise<ProvinceItem[]> {
   try {
-    const token = await getEReportToken()
-    const res = await fetch(`${BASE_URL}/datasets/provinces?region_code=${regionCode}`, {
-      headers: { "Authorization": `Bearer ${token}` },
-    })
-    if (!res.ok) throw new Error(`Provinces error: HTTP ${res.status}`)
-    const json = await res.json()
-    return json.data.map((item: any) => ({
+    const json = await ereportProxy<{ data: { id: string; attributes: { region_code: string; name: string } }[] }>(
+      "GET",
+      `/datasets/provinces?region_code=${regionCode}`,
+    )
+    if (!json) throw new Error("No response")
+    return json.data.map((item) => ({
       id: item.id,
       region_code: item.attributes.region_code,
       name: item.attributes.name,
     }))
   } catch (err) {
     console.warn(`[eReport] Failed to fetch provinces for region ${regionCode}, using PSA fallback:`, err)
-    if (PSA_PROVINCES[regionCode]) {
-      return PSA_PROVINCES[regionCode]
-    }
+    if (PSA_PROVINCES[regionCode]) return PSA_PROVINCES[regionCode]
     const regObj = PSA_REGIONS.find((r) => r.id === regionCode)
     const regName = regObj ? regObj.name.split("(")[0].trim() : "REGION"
     return [
@@ -179,13 +148,12 @@ export async function getProvinces(regionCode: string): Promise<ProvinceItem[]> 
  */
 export async function getMunicipalities(provinceCode: string): Promise<MunicipalityItem[]> {
   try {
-    const token = await getEReportToken()
-    const res = await fetch(`${BASE_URL}/datasets/municipalities?province_code=${provinceCode}`, {
-      headers: { "Authorization": `Bearer ${token}` },
-    })
-    if (!res.ok) throw new Error(`Municipalities error: HTTP ${res.status}`)
-    const json = await res.json()
-    return json.data.map((item: any) => ({
+    const json = await ereportProxy<{ data: { id: string; attributes: { region_code: string; province_code: string; name: string } }[] }>(
+      "GET",
+      `/datasets/municipalities?province_code=${provinceCode}`,
+    )
+    if (!json) throw new Error("No response")
+    return json.data.map((item) => ({
       id: item.id,
       region_code: item.attributes.region_code,
       province_code: item.attributes.province_code,
@@ -193,9 +161,7 @@ export async function getMunicipalities(provinceCode: string): Promise<Municipal
     }))
   } catch (err) {
     console.warn(`[eReport] Failed to fetch municipalities for province ${provinceCode}, using PSA fallback:`, err)
-    if (PSA_MUNICIPALITIES[provinceCode]) {
-      return PSA_MUNICIPALITIES[provinceCode]
-    }
+    if (PSA_MUNICIPALITIES[provinceCode]) return PSA_MUNICIPALITIES[provinceCode]
     const regCode = provinceCode.slice(0, 3) + "000000"
     return [
       { id: `${provinceCode.slice(0, 5)}01000`, region_code: regCode, province_code: provinceCode, name: "CITY OF ALAMINOS (Capital)" },
@@ -209,13 +175,12 @@ export async function getMunicipalities(provinceCode: string): Promise<Municipal
  */
 export async function getBarangays(municipalityCode: string): Promise<BarangayItem[]> {
   try {
-    const token = await getEReportToken()
-    const res = await fetch(`${BASE_URL}/datasets/barangays?municipality_code=${municipalityCode}`, {
-      headers: { "Authorization": `Bearer ${token}` },
-    })
-    if (!res.ok) throw new Error(`Barangays error: HTTP ${res.status}`)
-    const json = await res.json()
-    return json.data.map((item: any) => ({
+    const json = await ereportProxy<{ data: { id: string; attributes: { region_code: string; province_code: string; municipality_code: string; name: string } }[] }>(
+      "GET",
+      `/datasets/barangays?municipality_code=${municipalityCode}`,
+    )
+    if (!json) throw new Error("No response")
+    return json.data.map((item) => ({
       id: item.id,
       region_code: item.attributes.region_code,
       province_code: item.attributes.province_code,
@@ -224,9 +189,7 @@ export async function getBarangays(municipalityCode: string): Promise<BarangayIt
     }))
   } catch (err) {
     console.warn(`[eReport] Failed to fetch barangays for municipality ${municipalityCode}, using PSA fallback:`, err)
-    if (PSA_BARANGAYS[municipalityCode]) {
-      return PSA_BARANGAYS[municipalityCode]
-    }
+    if (PSA_BARANGAYS[municipalityCode]) return PSA_BARANGAYS[municipalityCode]
     const regCode = municipalityCode.slice(0, 3) + "000000"
     const provCode = municipalityCode.slice(0, 5) + "0000"
     return [
@@ -242,23 +205,9 @@ export async function getBarangays(municipalityCode: string): Promise<BarangayIt
  */
 export async function submitComplaint(payload: SubmitComplaintPayload): Promise<SubmitComplaintResponse> {
   try {
-    const token = await getEReportToken()
-    const res = await fetch(`${BASE_URL}/submit_complaint`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    })
-
-    if (!res.ok) throw new Error(`Submit complaint error: HTTP ${res.status}`)
-
-    const json = await res.json()
-    return {
-      ...json,
-      is_live_api: true,
-    }
+    const json = await ereportProxy<SubmitComplaintResponse>("POST", "/submit_complaint", payload)
+    if (!json) throw new Error("No response")
+    return { ...json, is_live_api: true }
   } catch (err) {
     console.warn("[eReport] Submit complaint failed, using fallback success response:", err)
     return {

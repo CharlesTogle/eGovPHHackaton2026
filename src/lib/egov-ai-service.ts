@@ -3,24 +3,10 @@ import { supabase } from "./supabase"
 /**
  * eGov AI API Service Layer
  *
- * Provides typed methods for eGov Hackathon AI services:
- * - Access Token Generation
- * - Translator Endpoint (/api/v1/egov/integration/translator/generate)
- * - AI Assistant Endpoint (/api/v1/egov/integration/ai_assistant/generate)
- * - Token Credits Endpoint (/api/v1/egov/integration/token)
- *
- * Uses direct live eGov AI API + Supabase Edge Function routing for optimal availability.
+ * All calls are routed through the Supabase Edge Function ("egov").
+ * API keys (EGOV_AI_ACCESS_CODE, GEMINI_API_KEY) are read from Deno.env
+ * on the server — they are never exposed in the browser bundle.
  */
-
-const EGOV_AI_BASE =
-  (typeof import.meta !== "undefined" && import.meta?.env?.VITE_EGOV_AI_BASE_URL) ||
-  (typeof process !== "undefined" && process?.env?.VITE_EGOV_AI_BASE_URL) ||
-  "https://egov-ai-core-ws.oueg.info"
-
-const EGOV_AI_ACCESS_CODE =
-  (typeof import.meta !== "undefined" && import.meta?.env?.VITE_EGOV_AI_ACCESS_CODE) ||
-  (typeof process !== "undefined" && process?.env?.VITE_EGOV_AI_ACCESS_CODE) ||
-  ""
 
 export type LanguageCode = "en" | "fil" | "ilo" | "ceb" | "hil" | "war" | "pam" | "pag" | "bik"
 
@@ -54,32 +40,6 @@ export interface CreditBalanceResponse {
   is_live_api?: boolean
 }
 
-let cachedClientToken: { token: string; expiresAt: number } | null = null
-
-async function getLiveClientToken(): Promise<string> {
-  if (cachedClientToken && Date.now() < cachedClientToken.expiresAt - 60000) {
-    return cachedClientToken.token
-  }
-
-  const res = await fetch(`${EGOV_AI_BASE}/api/v1/egov/integration/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ access_code: EGOV_AI_ACCESS_CODE }),
-  })
-
-  if (!res.ok) throw new Error(`Token error: ${res.status}`)
-  const data = (await res.json()) as { access_token?: string; expires_in_seconds?: number }
-  const token = data.access_token
-  if (!token) throw new Error("No access_token received")
-
-  const expiresInSeconds = data.expires_in_seconds || 172800
-  cachedClientToken = {
-    token,
-    expiresAt: Date.now() + expiresInSeconds * 1000,
-  }
-  return token
-}
-
 function getLocalFallbackAnswer(prompt: string): string {
   const lower = prompt.toLowerCase()
   if (lower.includes("hotline") || lower.includes("number") || lower.includes("call") || lower.includes("contact")) {
@@ -95,54 +55,26 @@ function getLocalFallbackAnswer(prompt: string): string {
 }
 
 /**
- * Translate text between supported languages using live eGov AI Translator
+ * Translate text between supported languages via Edge Function.
  */
 export async function translateText(
   prompt: string,
   targetLang: LanguageCode | string = "fil",
   sourceLang: LanguageCode | string = "en"
 ): Promise<TranslationResponse> {
-  // 1. Try direct live eGov AI API
-  try {
-    const token = await getLiveClientToken()
-    const res = await fetch(`${EGOV_AI_BASE}/api/v1/egov/integration/translator/generate`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        prompt,
-        source_lang: sourceLang,
-        target_lang: targetLang,
-      }),
-    })
-
-    if (res.ok) {
-      const data = await res.json()
-      return {
-        ...data,
-        is_live_api: true,
-        source: "egov_live",
-      }
-    }
-  } catch (err) {
-    console.warn("[eGov AI] Direct translator call failed, trying Edge Function / fallback:", err)
-  }
-
-  // 2. Try Supabase Edge Function
   try {
     if (supabase) {
       const { data, error } = await supabase.functions.invoke("egov", {
         body: { action: "translate", payload: { prompt, targetLang, sourceLang } },
       })
       if (!error && data) return data as TranslationResponse
+      if (error) console.warn("[eGov AI] Edge function translate failed:", error.message)
     }
   } catch (err) {
     console.warn("[eGov AI] Edge function translate failed:", err)
   }
 
-  // 3. Deterministic fallback
+  // Local fallback
   return {
     original_prompt: prompt,
     source_lang: sourceLang,
@@ -155,52 +87,27 @@ export async function translateText(
 }
 
 /**
- * Ask eGov AI Assistant a natural language question using live eGov AI Assistant
+ * Ask eGov AI Assistant a natural language question via Edge Function.
  */
 export async function askAiAssistant(
   prompt: string,
   category: string = "PH"
 ): Promise<AiAssistantResponse> {
-  // 1. Try direct live eGov AI API
-  try {
-    const token = await getLiveClientToken()
-    const res = await fetch(`${EGOV_AI_BASE}/api/v1/egov/integration/ai_assistant/generate`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ prompt, category }),
-    })
-
-    if (res.ok) {
-      const data = (await res.json()) as { data: string; session_id?: string }
-      return {
-        data: data.data,
-        session_id: data.session_id || crypto.randomUUID(),
-        is_live_api: true,
-        source: "egov_live",
-      }
-    }
-  } catch (err) {
-    console.warn("[eGov AI] Direct assistant call failed, trying Edge Function / fallback:", err)
-  }
-
-  // 2. Try Supabase Edge Function
   try {
     if (supabase) {
       const { data, error } = await supabase.functions.invoke("egov", {
         body: { action: "assistant", payload: { prompt, category } },
       })
-      if (!error && data && data.data) {
+      if (!error && data && (data as AiAssistantResponse).data) {
         return data as AiAssistantResponse
       }
+      if (error) console.warn("[eGov AI] Edge function assistant failed:", error.message)
     }
   } catch (err) {
     console.warn("[eGov AI] Edge function assistant failed:", err)
   }
 
-  // 3. Intelligent Local Fallback
+  // Local fallback
   return {
     data: getLocalFallbackAnswer(prompt),
     session_id: crypto.randomUUID(),
@@ -210,26 +117,16 @@ export async function askAiAssistant(
 }
 
 /**
- * Get remaining token credit balance from live eGov AI
+ * Get remaining token credit balance via Edge Function.
  */
 export async function getCreditBalance(): Promise<CreditBalanceResponse> {
   try {
-    const res = await fetch(`${EGOV_AI_BASE}/api/v1/egov/integration/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_code: EGOV_AI_ACCESS_CODE }),
-    })
-
-    if (res.ok) {
-      const data = (await res.json()) as { credits_total?: number; credits_remaining?: number }
-      const total = data.credits_total ?? 200
-      const remaining = data.credits_remaining ?? 200
-      return {
-        credits_total: total,
-        credits_used: total - remaining,
-        credits_remaining: remaining,
-        is_live_api: true,
-      }
+    if (supabase) {
+      const { data, error } = await supabase.functions.invoke("egov", {
+        body: { action: "credits", payload: {} },
+      })
+      if (!error && data) return data as CreditBalanceResponse
+      if (error) console.warn("[eGov AI] Credits check failed:", error.message)
     }
   } catch (err) {
     console.warn("[eGov AI] Credits endpoint error:", err)

@@ -71,7 +71,7 @@ export async function loadAll(): Promise<HandaData | null> {
 
 export async function insertCampaign(c: Campaign) {
   if (!db()) return null
-  const { data, error } = await table('campaigns').insert(c).select().single()
+  const { data, error } = await table('campaigns').upsert(c, { onConflict: 'id' }).select().single()
   if (error) console.error('insertCampaign:', error)
   return error ? null : (data as unknown as Campaign)
 }
@@ -84,7 +84,7 @@ export async function updateCampaignDb(id: string, fields: { name: string; disas
 
 export async function insertQuestion(q: CampaignQuestion) {
   if (!db()) return null
-  const { data, error } = await table('campaign_questions').insert(q).select().single()
+  const { data, error } = await table('campaign_questions').upsert(q, { onConflict: 'id' }).select().single()
   if (error) console.error('insertQuestion:', error)
   return error ? null : (data as unknown as CampaignQuestion)
 }
@@ -103,7 +103,7 @@ export async function updateQuestionDb(id: string, fields: { question_text: stri
 
 export async function insertQuestions(qs: CampaignQuestion[]) {
   if (!db()) return
-  const { error } = await table('campaign_questions').insert(qs)
+  const { error } = await table('campaign_questions').upsert(qs, { onConflict: 'id' })
   if (error) console.error('insertQuestions:', error)
 }
 

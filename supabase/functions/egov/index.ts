@@ -31,7 +31,7 @@ type AccessTokenResponse = {
 }
 type SSOAuthenticationResponse = { data?: EgovProfile }
 type RequestBody = {
-  action?: "request-otp" | "confirm-otp" | "sso-profile" | "translate" | "assistant" | "credits"
+  action?: "request-otp" | "confirm-otp" | "sso-profile" | "translate" | "assistant" | "credits" | "send-sms" | "send-telegram" | "ereport-proxy" | "ereport-token"
   payload?: Record<string, unknown>
 }
 
@@ -79,6 +79,23 @@ const aiRawBaseUrl = Deno.env.get("EGOV_AI_BASE_URL") ?? "https://egov-ai-core-w
 const aiBaseUrl = `${aiRawBaseUrl}/api/v1/egov/integration`
 const aiAccessCode = Deno.env.get("EGOV_AI_ACCESS_CODE") ?? integrationAccessCode ?? ""
 const geminiKey = Deno.env.get("GEMINI_API_KEY") ?? ""
+
+// eMessage SMS
+const emessageToken = Deno.env.get("EMESSAGE_ACCESS_TOKEN") ?? ""
+const emessageBaseUrl = Deno.env.get("EMESSAGE_BASE_URL") ?? "https://ws-message.e.gov.ph"
+
+// Telegram
+const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? ""
+const telegramDefaultChatIds: number[] = (() => {
+  const raw = Deno.env.get("TELEGRAM_CHAT_IDS") ?? ""
+  return raw ? raw.split(",").map((s) => Number(s.trim())).filter((n) => Number.isFinite(n) && n !== 0) : []
+})()
+
+// eReport
+const ereportAccessCode = Deno.env.get("EREPORT_ACCESS_TOKEN") ?? ""
+const ereportBaseUrl = Deno.env.get("EREPORT_BASE_URL") ?? "https://stg-ereport-ws.oueg.info"
+
+let cachedEreportToken: { token: string; expiresAt: number } | null = null
 
 function json(data: unknown, init?: ResponseInit) {
   return new Response(JSON.stringify(data), {
@@ -489,6 +506,123 @@ async function credits(): Promise<CreditBalanceResponse> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// eMessage SMS handler
+// ---------------------------------------------------------------------------
+
+async function sendSmsEdge(payload: Record<string, unknown>): Promise<{ success: boolean; status: number; error?: string }> {
+  const number = requireString(payload.number, "number")
+  const message = requireString(payload.message, "message")
+
+  if (!emessageToken) {
+    return { success: false, status: 0, error: "eGov eSMS access token is not configured." }
+  }
+
+  try {
+    const response = await fetch(`${emessageBaseUrl}/messaging/v1/sms/push`, {
+      method: "POST",
+      headers: {
+        "X-EMESSAGE-Auth": emessageToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ number, message }),
+    })
+
+    if (response.status === 201) return { success: true, status: 201 }
+    return {
+      success: false,
+      status: response.status,
+      error: `eGov eSMS returned HTTP ${response.status}: ${await response.text()}`,
+    }
+  } catch (err) {
+    return {
+      success: false,
+      status: 0,
+      error: `eGov eSMS request failed: ${err instanceof Error ? err.message : "network error"}`,
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Telegram handler
+// ---------------------------------------------------------------------------
+
+async function sendTelegramEdge(payload: Record<string, unknown>): Promise<{ success: boolean; error?: string }> {
+  if (!telegramBotToken) {
+    return { success: false, error: "Telegram bot token is not configured." }
+  }
+
+  const chatId = payload.chat_id as number
+  const text = requireString(payload.text, "text")
+  const parseMode = (payload.parse_mode as string | undefined) ?? "Markdown"
+  const replyMarkup = payload.reply_markup
+
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: parseMode, reply_markup: replyMarkup }),
+    })
+    const body = await response.json() as { ok?: boolean; description?: string }
+    if (body.ok) return { success: true }
+    return { success: false, error: body.description ?? `Telegram returned HTTP ${response.status}` }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Telegram network error" }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// eReport handlers
+// ---------------------------------------------------------------------------
+
+async function getEreportToken(): Promise<string> {
+  if (cachedEreportToken && Date.now() < cachedEreportToken.expiresAt - 60000) {
+    return cachedEreportToken.token
+  }
+
+  if (!ereportAccessCode) throw new Error("EREPORT_ACCESS_TOKEN is not configured.")
+
+  const res = await fetch(`${ereportBaseUrl}/api/integration/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ access_code: ereportAccessCode }),
+  })
+
+  if (!res.ok) throw new Error(`eReport token error: HTTP ${res.status}`)
+
+  const data = await res.json() as { access_token?: string; token?: string; expires_in_seconds?: number }
+  const token = data.access_token ?? data.token
+  if (!token) throw new Error("No token in eReport response")
+
+  cachedEreportToken = {
+    token,
+    expiresAt: Date.now() + (data.expires_in_seconds ?? 3600) * 1000,
+  }
+  return token
+}
+
+async function ereportProxyEdge(payload: Record<string, unknown>): Promise<unknown> {
+  const method = requireString(payload.method, "method")
+  const path = requireString(payload.path, "path")
+  const body = payload.body
+
+  const token = await getEreportToken()
+  const url = `${ereportBaseUrl}/api/integration${path}`
+
+  const res = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    ...(body && method !== "GET" ? { body: JSON.stringify(body) } : {}),
+  })
+
+  if (!res.ok) throw new Error(`eReport proxy error: HTTP ${res.status} for ${path}`)
+  return res.json()
+}
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
@@ -510,6 +644,16 @@ Deno.serve(async (req) => {
         return json(await assistant(payload))
       case "credits":
         return json(await credits())
+      case "send-sms":
+        return json(await sendSmsEdge(payload))
+      case "send-telegram":
+        return json(await sendTelegramEdge(payload))
+      case "ereport-token": {
+        const token = await getEreportToken()
+        return json({ token })
+      }
+      case "ereport-proxy":
+        return json(await ereportProxyEdge(payload))
       default:
         return json({ error: "Unsupported action" }, { status: 400 })
     }
